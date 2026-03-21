@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClearStep — Is This Safe?</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F7F4F0;
+      --surface: #FFFFFF;
+      --border: #D8D2C8;
+      --text: #111010;
+      --muted: #5A5550;
+      --safe: #00875A;
+      --safe-bg: #E6F6F0;
+      --safe-border: #9ADFC3;
+      --caution: #A04A00;
+      --caution-bg: #FEF0DC;
+      --caution-border: #F0C070;
+      --danger: #B91C1C;
+      --danger-bg: #FEE8E8;
+      --danger-border: #F0AAAA;
+      --font-display: 'Bebas Neue', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .brand {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(3.8rem, 11vw, 6.5rem);
+      line-height: 0.92;
+      letter-spacing: 0.02em;
+      color: var(--text);
+    }
+
+    h1 .dot {
+      display: inline-block;
+      width: 0.5em;
+      height: 0.5em;
+      background: var(--danger);
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-left: 0.06em;
+      position: relative;
+      top: -0.12em;
+    }
+
+    .header-sub {
+      margin-top: 1rem;
+      font-size: 1rem;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 440px;
+      font-weight: 400;
+    }
+
+    .input-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      animation: fadeUp 0.6s 0.1s ease both;
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
+    }
+
+    .input-label {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 130px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 1rem;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      line-height: 1.65;
+      color: var(--text);
+      background: var(--bg);
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+      font-weight: 400;
+    }
+
+    textarea:focus { border-color: var(--text); }
+    textarea::placeholder { color: #A8A39C; }
+
+    .input-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 1rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .chips-label {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .examples {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .example-btn {
+      padding: 0.3rem 0.8rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 400;
+    }
+
+    .example-btn:hover {
+      border-color: var(--text);
+      color: var(--text);
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    .analyze-btn {
+      padding: 0.8rem 2.25rem;
+      background: var(--text);
+      color: #F7F4F0;
+      border: none;
+      border-radius: 2px;
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .analyze-btn:hover {
+      background: #2A2520;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .analyze-btn:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    .analyze-btn:disabled {
+      background: var(--border);
+      color: var(--muted);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .loading {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.25rem 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-family: var(--font-mono);
+      letter-spacing: 0.06em;
+    }
+
+    .loading.visible { display: flex; }
+
+    .loading-dots {
+      display: flex;
+      gap: 4px;
+    }
+
+    .loading-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: dotBounce 1.2s infinite;
+    }
+
+    .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes dotBounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    .result-card {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+    }
+
+    .result-card.visible {
+      display: block;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .result-header {
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .risk-badge {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      letter-spacing: 0.08em;
+      padding: 0.3rem 1rem;
+      border-radius: 2px;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .risk-safe {
+      background: var(--safe-bg);
+      color: var(--safe);
+      border: 1px solid var(--safe-border);
+    }
+
+    .risk-caution {
+      background: var(--caution-bg);
+      color: var(--caution);
+      border: 1px solid var(--caution-border);
+    }
+
+    .risk-danger {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid var(--danger-border);
+    }
+
+    .result-meaning {
+      font-size: 1rem;
+      line-height: 1.55;
+      color: var(--text);
+      font-weight: 500;
+      padding-top: 0.2rem;
+    }
+
+    .result-body {
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 500px) {
+      .result-body { grid-template-columns: 1fr; }
+    }
+
+    .result-section-label {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .signals-list, .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      list-style: none;
+    }
+
+    .signals-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.55rem;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    .signal-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--caution);
+      flex-shrink: 0;
+      margin-top: 0.42em;
+    }
+
+    .signal-dot.safe { background: var(--safe); }
+    .signal-dot.danger { background: var(--danger); }
+
+    .steps-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    .step-num {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 0.1rem 0.45rem;
+      flex-shrink: 0;
+      margin-top: 0.18em;
+    }
+
+    .error-msg {
+      display: none;
+      padding: 1rem 1.5rem;
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      border-radius: 3px;
+      font-size: 0.88rem;
+      color: var(--danger);
+      line-height: 1.5;
+    }
+
+    .error-msg.visible {
+      display: block;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .reset-btn {
+      display: none;
+      margin-top: 1rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.45rem 1rem;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .reset-btn:hover {
+      border-color: var(--text);
+      color: var(--text);
+    }
+
+    .reset-btn.visible { display: inline-block; }
+
+    footer {
+      margin-top: 4rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+
+    .footer-left {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .footer-right {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <p class="brand">ClearStep</p>
+      <h1>IS THIS SAFE<span class="dot"></span></h1>
+      <p class="header-sub">Paste a message, email, or text. Get a clear, calm answer — and what to do next.</p>
+    </header>
+
+    <div class="input-card">
+      <label class="input-label" for="msgInput">Paste your message here</label>
+      <textarea id="msgInput" placeholder="Example: Your account has been locked. Click here immediately to verify your identity or your account will be closed within 24 hours."></textarea>
+
+      <div class="input-footer">
+        <div>
+          <p class="chips-label">Try an example</p>
+          <div class="examples">
+            <button class="example-btn" onclick="loadExample(0)">Bank scam</button>
+            <button class="example-btn" onclick="loadExample(1)">Package scam</button>
+            <button class="example-btn" onclick="loadExample(2)">Family emergency scam</button>
+            <button class="example-btn" onclick="loadExample(3)">Safe reminder</button>
+          </div>
+        </div>
+        <button class="analyze-btn" id="analyzeBtn" onclick="analyze()">CHECK MESSAGE</button>
+      </div>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="loading-dots">
+        <div class="loading-dot"></div>
+        <div class="loading-dot"></div>
+        <div class="loading-dot"></div>
+      </div>
+      <span>Analyzing your message...</span>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="result-card" id="resultCard">
+      <div class="result-header">
+        <div class="risk-badge" id="riskBadge"></div>
+        <div class="result-meaning" id="meaningText"></div>
+      </div>
+
+      <div class="result-body">
+        <div>
+          <p class="result-section-label">Key Signals</p>
+          <ul class="signals-list" id="signalsList"></ul>
+        </div>
+        <div>
+          <p class="result-section-label">Next Steps</p>
+          <ol class="steps-list" id="stepsList"></ol>
+        </div>
+      </div>
+    </div>
+
+    <button class="reset-btn" id="resetBtn" onclick="reset()">← Check another message</button>
+
+    <footer>
+      <span class="footer-left">ClearStep — Hackathon MVP</span>
+      <span class="footer-right">Calm guidance for high-stress decisions</span>
+    </footer>
+  </div>
+
+  <script>
+    const API_URL = '/api/analyze';
+    // If Joanne gives you a full Azure URL later, replace with:
+    // const API_URL = 'https://clearstep-gqb6gpa9hzbdf5gy.canadaeast-01.azurewebsites.net/api/analyze';
+
+    const examples = [
+      "Your bank account has been locked due to suspicious activity. Click here immediately to verify your identity or your account will be permanently closed within 24 hours.",
+      "Your USPS package could not be delivered. A small fee of $3.99 is required to release it. Pay here: usps-delivery-confirm.net/pay",
+      "Grandma it's me, I'm in jail and I need you to go to Walmart and buy $2000 in gift cards right now. Please don't tell Mom or Dad.",
+      "Hi! Just a reminder that your dentist appointment is tomorrow at 2:30 PM. Reply CONFIRM to confirm or CANCEL to cancel."
+    ];
+
+    const demoResults = [
+      {
+        risk_level: "High Risk",
+        meaning: "This message is trying to scare you into acting quickly.",
+        signals: ["Urgent language", "Threat language", "Suspicious link"],
+        next_steps: ["Do not click the link", "Contact your bank directly"]
+      },
+      {
+        risk_level: "High Risk",
+        meaning: "This message may be a delivery scam asking for payment.",
+        signals: ["Impersonation", "Suspicious link", "Requests payment"],
+        next_steps: ["Do not click the link", "Check the carrier directly"]
+      },
+      {
+        risk_level: "High Risk",
+        meaning: "This message may be pretending to be someone you know.",
+        signals: ["Impersonation", "Urgent pressure", "Requests gift cards"],
+        next_steps: ["Do not send money", "Call the person directly"]
+      },
+      {
+        risk_level: "Safe",
+        meaning: "This looks like a normal reminder with no risk signs.",
+        signals: ["No suspicious signals"],
+        next_steps: ["Confirm if correct"]
+      }
+    ];
+
+    function loadExample(i) {
+      document.getElementById('msgInput').value = examples[i];
+      document.getElementById('errorMsg').classList.remove('visible');
+      renderResult(demoResults[i]);
+    }
+
+    async function analyze() {
+      const msg = document.getElementById('msgInput').value.trim();
+
+      if (!msg) {
+        showError('Please paste a message to check.');
+        return;
+      }
+
+      document.getElementById('resultCard').classList.remove('visible');
+      document.getElementById('errorMsg').classList.remove('visible');
+      document.getElementById('resetBtn').classList.remove('visible');
+      document.getElementById('loading').classList.add('visible');
+      document.getElementById('analyzeBtn').disabled = true;
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ message: msg })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}`);
+        }
+
+        const data = await response.json();
+        renderResult(data);
+
+      } catch (e) {
+        showError('Unable to analyze right now. Please try again.');
+        console.error(e);
+
+      } finally {
+        document.getElementById('loading').classList.remove('visible');
+        document.getElementById('analyzeBtn').disabled = false;
+      }
+    }
+
+    function renderResult(r) {
+      const badge = document.getElementById('riskBadge');
+      badge.textContent = r.risk_level;
+      badge.className = 'risk-badge ' +
+        (r.risk_level === 'Safe' ? 'risk-safe' : r.risk_level === 'Caution' ? 'risk-caution' : 'risk-danger');
+
+      document.getElementById('meaningText').textContent = r.meaning;
+
+      const sigList = document.getElementById('signalsList');
+      sigList.innerHTML = '';
+
+      const dotClass = r.risk_level === 'Safe'
+        ? 'safe'
+        : r.risk_level === 'High Risk'
+        ? 'danger'
+        : '';
+
+      const signals = (r.signals && r.signals.length)
+        ? r.signals
+        : ['No suspicious signals'];
+
+      signals.forEach(s => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="signal-dot ${dotClass}"></span><span>${s}</span>`;
+        sigList.appendChild(li);
+      });
+
+      const stepList = document.getElementById('stepsList');
+      stepList.innerHTML = '';
+
+      (r.next_steps || []).forEach((s, i) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="step-num">${i + 1}</span><span>${s}</span>`;
+        stepList.appendChild(li);
+      });
+
+      document.getElementById('resultCard').classList.add('visible');
+      document.getElementById('resetBtn').classList.add('visible');
+      document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('errorMsg');
+      el.textContent = msg;
+      el.classList.add('visible');
+      document.getElementById('loading').classList.remove('visible');
+    }
+
+    function reset() {
+      document.getElementById('msgInput').value = '';
+      document.getElementById('resultCard').classList.remove('visible');
+      document.getElementById('errorMsg').classList.remove('visible');
+      document.getElementById('resetBtn').classList.remove('visible');
+      document.getElementById('msgInput').focus();
+    }
+
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') analyze();
+    });
+
+    document.getElementById('msgInput').focus();
+  </script>
+</body>
+</html>
