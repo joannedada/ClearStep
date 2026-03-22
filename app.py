@@ -123,7 +123,8 @@ def analyze():
     detected_flags = None
     try:
         detected_flags = extract_signals_with_azure(msg)
-    except Exception:
+    except Exception as e:
+        print("Azure error:", e)
         detected_flags = None
 
     prompt = build_prompt(msg, detected_flags)
