@@ -127,6 +127,8 @@ def analyze():
         print("Azure error:", e)
         detected_flags = None
 
+    print("Detected flags:", detected_flags)
+
     prompt = build_prompt(msg, detected_flags)
 
     response = requests.post(
