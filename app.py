@@ -83,6 +83,7 @@ Return exactly these boolean fields:
     )
 
     if response.status_code != 200:
+        print("Azure API error:", response.status_code, response.text)
         return None
 
     result = response.json()
