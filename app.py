@@ -47,7 +47,7 @@ def extract_signals_with_azure(msg):
     if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT]):
         return None
 
-    url = f"{AZURE_OPENAI_ENDPOINT}/openai/deployments/{AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version={AZURE_OPENAI_API_VERSION}"
+    url = f"{AZURE_OPENAI_ENDPOINT}/openai/v1/chat/completions"
 
     system_prompt = """
 You are a strict classifier.
@@ -72,6 +72,7 @@ Return exactly these boolean fields:
             "api-key": AZURE_OPENAI_API_KEY
         },
         json={
+            "model": AZURE_OPENAI_DEPLOYMENT,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": msg}
@@ -79,7 +80,7 @@ Return exactly these boolean fields:
             "temperature": 0,
             "max_tokens": 150
         },
-        timeout=20
+        timeout=15
     )
 
     if response.status_code != 200:
