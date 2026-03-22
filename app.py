@@ -47,7 +47,7 @@ def extract_signals_with_azure(msg):
     if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT]):
         return None
 
-    url = f"{AZURE_OPENAI_ENDPOINT}/openai/deployments/{AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version={AZURE_OPENAI_API_VERSION}"
+    url = f"{AZURE_OPENAI_ENDPOINT}/openai/v1/chat/completions"
 
     system_prompt = """
 You are a strict classifier.
@@ -72,6 +72,7 @@ Return exactly these boolean fields:
             "api-key": AZURE_OPENAI_API_KEY
         },
         json={
+            "model": AZURE_OPENAI_DEPLOYMENT,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": msg}
@@ -79,22 +80,35 @@ Return exactly these boolean fields:
             "temperature": 0,
             "max_tokens": 150
         },
-        timeout=20
+        timeout=15
     )
 
     if response.status_code != 200:
-        return None
+        print("Azure API error:", response.status_code, response.text)
+        return {
+            "urgency": False,
+            "money_request": False,
+            "impersonation": False,
+            "suspicious_link": False,
+            "threat_language": False
+        }
 
     result = response.json()
+    print("Azure raw response:", json.dumps(result, indent=2))
+
     content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+    print("Azure content:", repr(content))
 
     if not content:
+        print("Azure returned empty content")
         return None
 
     raw_text = content.strip().replace("```json", "").replace("```", "").strip()
+    print("Azure raw_text:", repr(raw_text))
 
     try:
         parsed = json.loads(raw_text)
+        print("Azure parsed JSON:", parsed)
         return {
             "urgency": bool(parsed.get("urgency", False)),
             "money_request": bool(parsed.get("money_request", False)),
@@ -127,6 +141,8 @@ def analyze():
         print("Azure error:", e)
         detected_flags = None
 
+    print("Detected flags:", detected_flags)
+
     prompt = build_prompt(msg, detected_flags)
 
     response = requests.post(
@@ -145,6 +161,7 @@ def analyze():
     )
 
     if response.status_code != 200:
+        print("Anthropic error:", response.status_code, response.text)
         return jsonify({"error": response.text}), response.status_code
 
     result = response.json()
