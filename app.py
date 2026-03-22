@@ -87,15 +87,21 @@ Return exactly these boolean fields:
         return None
 
     result = response.json()
+    print("Azure raw response:", json.dumps(result, indent=2))
+
     content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+    print("Azure content:", repr(content))
 
     if not content:
+        print("Azure returned empty content")
         return None
 
     raw_text = content.strip().replace("```json", "").replace("```", "").strip()
+    print("Azure raw_text:", repr(raw_text))
 
     try:
         parsed = json.loads(raw_text)
+        print("Azure parsed JSON:", parsed)
         return {
             "urgency": bool(parsed.get("urgency", False)),
             "money_request": bool(parsed.get("money_request", False)),
