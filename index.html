@@ -9,6 +9,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
+      --accent: #2F6F6F;
       --bg: #F7F4F0;
       --surface: #FFFFFF;
       --border: #D8D2C8;
@@ -59,31 +60,22 @@
 
     .brand {
       font-family: var(--font-mono);
-      font-size: 0.7rem;
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 0.35rem;
+      font-size: 0.95rem;
+      color: var(--text);
+      letter-spacing: 0.2em;
     }
 
     h1 {
       font-family: var(--font-display);
-      font-size: clamp(3.8rem, 11vw, 6.5rem);
+      font-size: clamp(2.4rem, 6vw, 3.6rem);
       line-height: 0.92;
       letter-spacing: 0.02em;
       color: var(--text);
     }
 
-    h1 .dot {
-      display: inline-block;
-      width: 0.5em;
-      height: 0.5em;
-      background: var(--danger);
-      border-radius: 50%;
-      vertical-align: middle;
-      margin-left: 0.06em;
-      position: relative;
-      top: -0.12em;
+    h1 .qmark {
+      color: var(--text);
+      margin-left: 0.04em;
     }
 
     .header-sub {
@@ -173,8 +165,8 @@
     }
 
     .example-btn:hover {
-      border-color: var(--text);
-      color: var(--text);
+      border-color: var(--accent);
+      color: var(--accent);
       background: rgba(0, 0, 0, 0.02);
     }
 
@@ -351,6 +343,7 @@
 
     .signal-dot.safe { background: var(--safe); }
     .signal-dot.danger { background: var(--danger); }
+    .signal-dot.caution { background: var(--caution); }
 
     .steps-list li {
       display: flex;
@@ -448,8 +441,8 @@
   <div class="wrap">
     <header>
       <p class="brand">ClearStep</p>
-      <h1>IS THIS SAFE<span class="dot"></span></h1>
-      <p class="header-sub">Paste a message, email, or text. Get a clear, calm answer — and what to do next.</p>
+      <h1>IS THIS SAFE<span class="qmark">?</span></h1>
+      <p class="header-sub">Paste a message. Get the risk and what to do next.</p>
     </header>
 
     <div class="input-card">
@@ -461,7 +454,7 @@
           <p class="chips-label">Try an example</p>
           <div class="examples">
             <button class="example-btn" onclick="loadExample(0)">Bank scam</button>
-            <button class="example-btn" onclick="loadExample(1)">Package scam</button>
+            <button class="example-btn" onclick="loadExample(1)">Suspicious link</button>
             <button class="example-btn" onclick="loadExample(2)">Family emergency scam</button>
             <button class="example-btn" onclick="loadExample(3)">Safe reminder</button>
           </div>
@@ -503,7 +496,7 @@
 
     <footer>
       <span class="footer-left">ClearStep — Hackathon MVP</span>
-      <span class="footer-right">Calm guidance for high-stress decisions</span>
+      <span class="footer-right">Risk decisions in seconds</span>
     </footer>
   </div>
 
@@ -514,7 +507,7 @@
 
     const examples = [
       "Your bank account has been locked due to suspicious activity. Click here immediately to verify your identity or your account will be permanently closed within 24 hours.",
-      "Your USPS package could not be delivered. A small fee of $3.99 is required to release it. Pay here: usps-delivery-confirm.net/pay",
+      "Hey, I found something you need to see. Click this link before it expires: bit.ly/xr9vcheck — let me know what you think.",
       "Grandma it's me, I'm in jail and I need you to go to Walmart and buy $2000 in gift cards right now. Please don't tell Mom or Dad.",
       "Hi! Just a reminder that your dentist appointment is tomorrow at 2:30 PM. Reply CONFIRM to confirm or CANCEL to cancel."
     ];
@@ -522,27 +515,27 @@
     const demoResults = [
       {
         risk_level: "High Risk",
-        meaning: "This message is trying to scare you into acting quickly.",
-        signals: ["Urgent language", "Threat language", "Suspicious link"],
-        next_steps: ["Do not click the link", "Contact your bank directly"]
+        meaning: "This is likely a scam using urgency to pressure you into action.",
+        signals: ["Urgent language", "Threat of account closure", "Suspicious link"],
+        next_steps: ["Do not click the link", "Contact your bank directly using the number on your card"]
+      },
+      {
+        risk_level: "Caution",
+        meaning: "This message includes a link that could be unsafe.",
+        signals: ["Unknown link", "Vague sender", "Pressure to act"],
+        next_steps: ["Do not click the link", "Go directly to the official website to check your account"]
       },
       {
         risk_level: "High Risk",
-        meaning: "This message may be a delivery scam asking for payment.",
-        signals: ["Impersonation", "Suspicious link", "Requests payment"],
-        next_steps: ["Do not click the link", "Check the carrier directly"]
-      },
-      {
-        risk_level: "High Risk",
-        meaning: "This message may be pretending to be someone you know.",
+        meaning: "This is likely impersonation to pressure you into sending money.",
         signals: ["Impersonation", "Urgent pressure", "Requests gift cards"],
-        next_steps: ["Do not send money", "Call the person directly"]
+        next_steps: ["Do not send money", "Call the person directly to verify"]
       },
       {
         risk_level: "Safe",
-        meaning: "This looks like a normal reminder with no risk signs.",
-        signals: ["No suspicious signals"],
-        next_steps: ["Confirm if correct"]
+        meaning: "This appears to be a normal reminder with no urgent risk signals.",
+        signals: ["Known context", "No urgency", "No sensitive request"],
+        next_steps: ["No urgent action needed. Respond normally if expected."]
       }
     ];
 
@@ -607,7 +600,7 @@
         ? 'safe'
         : r.risk_level === 'High Risk'
         ? 'danger'
-        : '';
+        : 'caution';
 
       const signals = (r.signals && r.signals.length)
         ? r.signals
