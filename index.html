@@ -29,7 +29,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
 /* ── TOPBAR ── */
 .topbar{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--bg3);display:flex;align-items:center;justify-content:space-between;padding:10px 1.5rem;transition:var(--tr);}
-.topbar-brand{font-family:var(--font-display);font-size:1.35rem;letter-spacing:0.06em;line-height:1;}
+.topbar-brand{font-family:var(--font-display);font-size:1.35rem;letter-spacing:0.06em;line-height:1;cursor:pointer;text-decoration:none;background:none;border:none;padding:0;}
 .brand-clear{color:var(--text);}
 .brand-step{color:var(--accent);}
 .topbar-right{display:flex;gap:6px;align-items:center;}
@@ -304,6 +304,14 @@ footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--bg3);disp
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 .reminder-change-btn{background:transparent;border:1px solid var(--bg3);border-radius:4px;padding:2px 9px;font-size:0.72rem;color:var(--muted);cursor:pointer;transition:all 0.2s;font-family:var(--font-body);}
 .reminder-change-btn:hover{border-color:var(--accent);color:var(--accent);}
+/* Date picker for deadline tasks */
+.reminder-date-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.reminder-date-input{padding:5px 8px;border:1px solid var(--bg3);border-radius:4px;font-size:0.78rem;font-family:var(--font-body);color:var(--text);background:var(--bg);cursor:pointer;transition:border-color 0.2s;}
+.reminder-date-input:focus{outline:none;border-color:var(--accent);}
+.reminder-date-set-btn{padding:5px 12px;border:1px solid var(--accent);border-radius:4px;background:var(--accent);color:#fff;font-size:0.78rem;font-family:var(--font-body);cursor:pointer;transition:all 0.2s;}
+.reminder-date-set-btn:hover{filter:brightness(1.08);}
+.reminder-mode-toggle{font-size:0.7rem;color:var(--muted);text-decoration:underline;background:none;border:none;cursor:pointer;font-family:var(--font-body);padding:0;margin-top:2px;}
+.reminder-mode-toggle:hover{color:var(--accent);}
 /* Calendar reminder buttons */
 .reminder-loading{font-size:0.78rem;color:var(--muted);font-family:var(--font-mono);letter-spacing:0.06em;padding:4px 0;}
 .reminder-calendar-block{display:flex;flex-direction:column;gap:6px;flex:1;}
@@ -323,7 +331,7 @@ footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--bg3);disp
 
 <!-- TOPBAR -->
 <div class="topbar">
-  <span class="topbar-brand"><span class="brand-clear">Clear</span><span class="brand-step">Step</span></span>
+  <button class="topbar-brand" onclick="goBack()" aria-label="Go to home screen"><span class="brand-clear">Clear</span><span class="brand-step">Step</span></button>
   <div class="topbar-right">
     <div class="rl-levels">
       <button class="rl-btn" data-rl="simple" onclick="setRL(this)">Big</button>
@@ -463,13 +471,22 @@ footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--bg3);disp
               <div id="reminderStatePicker" class="reminder-state reminder-state-picker" style="display:none;">
                 <div class="reminder-for-label">Remind me to:</div>
                 <div class="reminder-step-preview" id="reminderStepPreview"></div>
-                <div class="reminder-when-label">When?</div>
-                <div class="reminder-picker-btns">
+                <div class="reminder-when-label" id="reminderWhenLabel">When?</div>
+                <!-- Standard time options -->
+                <div class="reminder-picker-btns" id="reminderTimeBtns">
                   <button onclick="setStepReminder('1hour')">In 1 hour</button>
                   <button onclick="setStepReminder('afternoon')">This afternoon</button>
                   <button onclick="setStepReminder('evening')">This evening</button>
                   <button onclick="setStepReminder('tomorrow')">Tomorrow morning</button>
                 </div>
+                <!-- Date picker — shown for deadline tasks -->
+                <div class="reminder-date-row" id="reminderDateRow" style="display:none;">
+                  <input type="date" class="reminder-date-input" id="reminderDateInput"/>
+                  <input type="time" class="reminder-date-input" id="reminderTimeInput" value="09:00"/>
+                  <button class="reminder-date-set-btn" onclick="setDateReminder()">Add to calendar</button>
+                </div>
+                <!-- Toggle between modes -->
+                <button class="reminder-mode-toggle" id="reminderModeToggle" onclick="toggleReminderMode()"></button>
                 <button class="reminder-cancel-link" onclick="closeReminderPicker()">Cancel</button>
               </div>
               <!-- State C: loading — calling calendar function -->
@@ -937,14 +954,105 @@ function undoAllSteps(){
   renderStep();
 }
 
-function toggleAllSteps(){ }
+function toggleAllSteps(){
+  // If not yet started, start steps and show the unified list immediately
+  if(document.getElementById('simplePhase2').style.display === 'none'){
+    startSteps();
+    const unified = document.getElementById('unifiedSteps');
+    if(unified) unified.style.display = 'block';
+  } else {
+    // Already in phase 2 — scroll to the unified list
+    const unified = document.getElementById('unifiedSteps');
+    if(unified){
+      unified.style.display = 'block';
+      unified.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
+  }
+}
 function renderAllStepsLists(){ }
 
 // ── Reminder ──────────────────────────────────────────────
+// Keywords that suggest a deadline task — show date picker by default
+const DEADLINE_KEYWORDS = ['deadline','days','date','by ','within','expires','due','60-day','30-day','90-day','submit by','before'];
+
+function taskHasDeadline(text){
+  const low = (text || '').toLowerCase();
+  return DEADLINE_KEYWORDS.some(k => low.includes(k));
+}
+
 function openReminderPicker(){
+  const stepText = state.tasks[state.currentIndex] || 'this step';
   const preview = document.getElementById('reminderStepPreview');
-  if(preview) preview.textContent = state.tasks[state.currentIndex] || 'this step';
+  if(preview) preview.textContent = stepText;
+
+  // Set default date to tomorrow
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  const dateInput = document.getElementById('reminderDateInput');
+  if(dateInput) dateInput.value = tomorrow.toISOString().split('T')[0];
+
+  // Show date picker mode for deadline tasks, time buttons for others
+  const isDeadline = taskHasDeadline(stepText);
+  setReminderPickerMode(isDeadline ? 'date' : 'time');
   setReminderUI('picker');
+}
+
+function setReminderPickerMode(mode){
+  const timeBtns = document.getElementById('reminderTimeBtns');
+  const dateRow = document.getElementById('reminderDateRow');
+  const toggle = document.getElementById('reminderModeToggle');
+  const whenLabel = document.getElementById('reminderWhenLabel');
+  if(mode === 'date'){
+    if(timeBtns) timeBtns.style.display = 'none';
+    if(dateRow) dateRow.style.display = 'flex';
+    if(toggle) toggle.textContent = 'Use quick times instead';
+    if(whenLabel) whenLabel.textContent = 'Add to calendar on:';
+  } else {
+    if(timeBtns) timeBtns.style.display = 'flex';
+    if(dateRow) dateRow.style.display = 'none';
+    if(toggle) toggle.textContent = 'Choose a specific date instead';
+    if(whenLabel) whenLabel.textContent = 'When?';
+  }
+}
+
+function toggleReminderMode(){
+  const timeBtns = document.getElementById('reminderTimeBtns');
+  const isTimesVisible = timeBtns && timeBtns.style.display !== 'none';
+  setReminderPickerMode(isTimesVisible ? 'date' : 'time');
+}
+
+async function setDateReminder(){
+  const dateVal = document.getElementById('reminderDateInput').value;
+  const timeVal = document.getElementById('reminderTimeInput').value || '09:00';
+  if(!dateVal){ return; }
+  const stepText = state.tasks[state.currentIndex] || '';
+  state.reminderMins = 'custom';
+  setReminderUI('loading');
+  try {
+    const res = await fetch(CALENDAR_FUNCTION_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({step_text: stepText, time_choice: 'custom', custom_datetime: dateVal+'T'+timeVal+':00'})
+    });
+    if(!res.ok) throw new Error('Calendar function returned '+res.status);
+    const data = await res.json();
+    const gBtn = document.getElementById('calBtnGoogle');
+    const oBtn = document.getElementById('calBtnOutlook');
+    if(gBtn) gBtn.href = data.google_link || '#';
+    if(oBtn) oBtn.href = data.outlook_link || '#';
+    const lbl = document.getElementById('reminderActiveLabel');
+    const stepLbl = document.getElementById('reminderActiveStep');
+    if(lbl) lbl.textContent = 'Add to your calendar — '+dateVal+' at '+timeVal;
+    if(stepLbl) stepLbl.textContent = stepText;
+    const errEl = document.getElementById('reminderError');
+    if(errEl) errEl.style.display = 'none';
+    setReminderUI('active');
+  } catch(e){
+    console.error('Calendar error:', e);
+    const lbl = document.getElementById('reminderActiveLabel');
+    if(lbl) lbl.textContent = 'Calendar unavailable';
+    const errEl = document.getElementById('reminderError');
+    if(errEl){ errEl.style.display='block'; errEl.textContent='Could not connect to calendar. Try again.'; }
+    setReminderUI('active');
+  }
 }
 function closeReminderPicker(){ setReminderUI('none'); }
 
@@ -1081,6 +1189,8 @@ const DISCLAIMER_SENTINEL = 'reminder tool only — always follow your original 
 
 function renderResult(r){
   currentIsMedical = r.is_medical === true;
+  // Clear any standing error message — chip clicks bypass analyze() so need to clear here
+  document.getElementById('errorMsg').classList.remove('visible');
 
   // ── Badge logic ──────────────────────────────────────────
   const badge = document.getElementById('riskBadge');
