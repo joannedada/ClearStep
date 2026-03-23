@@ -616,11 +616,23 @@ def calendar_link():
     if not step_text or not time_choice:
         return jsonify({"error": "Missing step_text or time_choice"}), 400
 
-    valid_times = ["1hour", "afternoon", "evening", "tomorrow"]
+    valid_times = ["1hour", "afternoon", "evening", "tomorrow", "custom"]
     if time_choice not in valid_times:
         return jsonify({"error": f"Invalid time_choice. Must be one of: {valid_times}"}), 400
 
-    start, end = get_event_times(time_choice)
+    # Custom datetime — user picked a specific date/time from the date picker
+    if time_choice == "custom":
+        custom_dt = data.get("custom_datetime", "").strip()
+        if not custom_dt:
+            return jsonify({"error": "custom_datetime required when time_choice is custom"}), 400
+        try:
+            from datetime import datetime, timedelta
+            start = datetime.fromisoformat(custom_dt)
+            end = start + timedelta(minutes=30)
+        except ValueError:
+            return jsonify({"error": "Invalid custom_datetime format. Use ISO 8601: YYYY-MM-DDTHH:MM:SS"}), 400
+    else:
+        start, end = get_event_times(time_choice)
     google_link = build_google_link(step_text, start, end)
     outlook_link = build_outlook_link(step_text, start, end)
 
