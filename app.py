@@ -48,10 +48,22 @@ except Exception as e:
     print(f"Key Vault unavailable, using environment variables: {e}")
 
 # ── Azure AI Content Safety screener ─────────────────────
+# Returns {"ran": bool, "crisis": bool} — always same shape.
+# If crisis=True, caller must short-circuit with 988 response immediately.
+CRISIS_RESPONSE = {
+    "risk_level": "High Risk",
+    "meaning": "This message may need immediate mental health support.",
+    "signals": ["Crisis language", "Self-harm concern"],
+    "next_steps": [
+        "Call or text 988 — Suicide and Crisis Lifeline",
+        "Reach out to a trusted person right now"
+    ]
+}
+
 def screen_with_content_safety(msg):
     if not all([AZURE_CONTENT_SAFETY_ENDPOINT, AZURE_CONTENT_SAFETY_KEY]):
-        print("Content Safety not configured, skipping.")
-        return None
+        logger.info("Content Safety not configured — skipping")
+        return {"ran": False, "crisis": False}
     url = f"{AZURE_CONTENT_SAFETY_ENDPOINT}/contentsafety/text:analyze?api-version=2023-10-01"
     try:
         response = requests.post(
@@ -68,14 +80,21 @@ def screen_with_content_safety(msg):
             timeout=10
         )
         if response.status_code != 200:
-            print("Content Safety error:", response.status_code, response.text)
-            return None
+            logger.warning("Content Safety non-200", extra={
+                "custom_dimensions": {"status": str(response.status_code)}
+            })
+            return {"ran": False, "crisis": False}
         result = response.json()
-        print("Content Safety result:", json.dumps(result, indent=2))
-        return result
+        # Check for severe self-harm signal (severity 4 = highest)
+        categories = result.get("categoriesAnalysis", [])
+        for cat in categories:
+            if cat.get("category") == "SelfHarm" and cat.get("severity", 0) >= 4:
+                logger.warning("Content Safety: severe self-harm detected — short-circuiting")
+                return {"ran": True, "crisis": True}
+        return {"ran": True, "crisis": False}
     except Exception as e:
-        print("Content Safety exception:", e)
-        return None
+        logger.warning("Content Safety exception", extra={"custom_dimensions": {"error": str(e)}})
+        return {"ran": False, "crisis": False}
 
 # ── Blob storage helper ─────────────────────────────────
 def store_result_to_blob(parsed):
@@ -236,9 +255,19 @@ Message: "{msg}"
 """
 
 # ── Azure OpenAI signal extractor ───────────────────────
+# Always returns {"ok": bool, "flags": {...}} — never None, never bare dict.
+EMPTY_FLAGS = {
+    "urgency": False,
+    "money_request": False,
+    "impersonation": False,
+    "suspicious_link": False,
+    "threat_language": False
+}
+
 def extract_signals_with_azure(msg):
     if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_DEPLOYMENT]):
-        return None
+        logger.info("Azure signal extractor not configured — skipping")
+        return {"ok": False, "flags": EMPTY_FLAGS}
     url = f"{AZURE_OPENAI_ENDPOINT}/openai/v1/chat/completions"
     system_prompt = """
 You are a strict classifier.
@@ -247,60 +276,54 @@ Do not explain.
 Do not add markdown.
 Return exactly these boolean fields:
 {
-  "urgency": true,
+  "urgency": false,
   "money_request": false,
   "impersonation": false,
   "suspicious_link": false,
   "threat_language": false
 }
 """
-    response = requests.post(
-        url,
-        headers={
-            "Content-Type": "application/json",
-            "api-key": AZURE_OPENAI_API_KEY
-        },
-        json={
-            "model": AZURE_OPENAI_DEPLOYMENT,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": msg}
-            ],
-            "temperature": 0,
-            "max_tokens": 150
-        },
-        timeout=15
-    )
-    if response.status_code != 200:
-        print("Azure API error:", response.status_code, response.text)
-        return {
-            "urgency": False,
-            "money_request": False,
-            "impersonation": False,
-            "suspicious_link": False,
-            "threat_language": False
-        }
-    result = response.json()
-    print("Azure raw response:", json.dumps(result, indent=2))
-    content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-    print("Azure content:", repr(content))
-    if not content:
-        print("Azure returned empty content")
-        return None
-    raw_text = content.strip().replace("```json", "").replace("```", "").strip()
-    print("Azure raw_text:", repr(raw_text))
     try:
+        response = requests.post(
+            url,
+            headers={
+                "Content-Type": "application/json",
+                "api-key": AZURE_OPENAI_API_KEY
+            },
+            json={
+                "model": AZURE_OPENAI_DEPLOYMENT,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": msg}
+                ],
+                "temperature": 0,
+                "max_tokens": 150
+            },
+            timeout=15
+        )
+        if response.status_code != 200:
+            logger.warning("Azure signal extractor non-200", extra={
+                "custom_dimensions": {"status": str(response.status_code)}
+            })
+            return {"ok": False, "flags": EMPTY_FLAGS}
+        result = response.json()
+        raw_content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if not raw_content:
+            logger.warning("Azure signal extractor returned empty content")
+            return {"ok": False, "flags": EMPTY_FLAGS}
+        raw_text = raw_content.strip().replace("```json", "").replace("```", "").strip()
         parsed = json.loads(raw_text)
-        print("Azure parsed JSON:", parsed)
-        return {
+        flags = {
             "urgency": bool(parsed.get("urgency", False)),
             "money_request": bool(parsed.get("money_request", False)),
             "impersonation": bool(parsed.get("impersonation", False)),
             "suspicious_link": bool(parsed.get("suspicious_link", False)),
             "threat_language": bool(parsed.get("threat_language", False)),
         }
-    except Exception:
-        return None
+        return {"ok": True, "flags": flags}
+    except Exception as e:
+        logger.warning("Azure signal extractor failed", extra={"custom_dimensions": {"error": str(e)}})
+        return {"ok": False, "flags": EMPTY_FLAGS}
 
 # ── Schema validation ────────────────────────────────
 VALID_RISK_LEVELS = {"Safe", "Caution", "High Risk"}
@@ -310,6 +333,15 @@ REQUIRED_FIELDS = {
     "simple": ["risk_level", "meaning", "warnings", "key_items", "tasks", "is_medical"],
 }
 
+# Medical disclaimer sentinel — must always appear in warnings when is_medical=True
+MEDICAL_DISCLAIMER = "Reminder tool only — always follow your original prescription"
+
+def _clean_list(lst):
+    # Ensure all items are non-empty strings
+    if not isinstance(lst, list):
+        return []
+    return [str(item).strip() for item in lst if str(item).strip()]
+
 def validate_response(parsed, mode):
     errors = []
 
@@ -317,21 +349,29 @@ def validate_response(parsed, mode):
     for field in REQUIRED_FIELDS.get(mode, []):
         if field not in parsed:
             errors.append(f"missing field: {field}")
-
     if errors:
         return None, errors
 
-    # 2. Normalize risk_level
+    # 2. meaning must be a non-empty string
+    meaning = parsed.get("meaning", "")
+    if not isinstance(meaning, str) or not meaning.strip():
+        errors.append("meaning must be a non-empty string")
+        return None, errors
+    # Truncate if too long
+    words = meaning.split()
+    if len(words) > 20:
+        parsed["meaning"] = " ".join(words[:20]) + "..."
+
+    # 3. Normalize risk_level
     risk = parsed.get("risk_level", "")
     if risk not in VALID_RISK_LEVELS:
-        # Try case-insensitive fix before failing
         fixed = next((v for v in VALID_RISK_LEVELS if v.lower() == risk.lower()), None)
         if fixed:
             parsed["risk_level"] = fixed
         else:
             errors.append(f"invalid risk_level: '{risk}'")
 
-    # 3. Ensure list fields are actually lists
+    # 4. Normalize all list fields — ensure list of non-empty strings, trim empties
     list_fields = {
         "safe":   ["signals", "next_steps"],
         "simple": ["warnings", "key_items", "tasks"],
@@ -341,63 +381,75 @@ def validate_response(parsed, mode):
         if val is None:
             parsed[field] = []
         elif isinstance(val, str):
-            # Model returned a string instead of a list — wrap it
-            parsed[field] = [val]
+            parsed[field] = [val.strip()] if val.strip() else []
         elif not isinstance(val, list):
             parsed[field] = []
+        else:
+            parsed[field] = _clean_list(val)
 
-    # 4. Simple mode specific checks
+    # 5. Simple mode checks
     if mode == "simple":
-        # is_medical must be a boolean
         parsed["is_medical"] = bool(parsed.get("is_medical", False))
 
         # tasks must not be empty
         if not parsed.get("tasks"):
             errors.append("tasks list is empty — model returned no steps")
 
-        # tasks must not contain warning-like items (safety check)
-        # If a task starts with "Do not" or "Never" it leaked from warnings
+        # Enforce max counts
+        if len(parsed.get("tasks", [])) > 10:
+            parsed["tasks"] = parsed["tasks"][:10]
+        if len(parsed.get("warnings", [])) > 6:
+            parsed["warnings"] = parsed["warnings"][:6]
+        if len(parsed.get("key_items", [])) > 4:
+            parsed["key_items"] = parsed["key_items"][:4]
+
+        # Catch leaked warnings in tasks — move them to warnings
         clean_tasks = []
-        leaked_warnings = []
+        leaked = []
         for task in parsed.get("tasks", []):
-            low = task.strip().lower()
-            if low.startswith("do not") or low.startswith("never ") or low.startswith("avoid "):
-                leaked_warnings.append(task)
+            low = task.lower()
+            if low.startswith(("do not", "never ", "avoid ", "do not ")):
+                leaked.append(task)
             else:
                 clean_tasks.append(task)
-        if leaked_warnings:
-            logger.warning("Schema validation: warning-type items found in tasks, moving to warnings", extra={
-                "custom_dimensions": {"leaked": str(leaked_warnings)}
+        if leaked:
+            logger.warning("Leaked warnings found in tasks — moving to warnings", extra={
+                "custom_dimensions": {"leaked": str(leaked)}
             })
             parsed["tasks"] = clean_tasks
-            # Append to warnings if not already there
             existing = [w.lower() for w in parsed.get("warnings", [])]
-            for w in leaked_warnings:
+            for w in leaked:
                 if w.lower() not in existing:
                     parsed["warnings"].append(w)
 
-        # next_steps not needed in simple mode — remove if present
+        # MEDICAL HARDENING — code-enforced, not just prompt-enforced
+        if parsed["is_medical"]:
+            # warnings must not be empty for medical content
+            if not parsed.get("warnings"):
+                errors.append("is_medical=True but warnings list is empty — unsafe to return")
+                return None, errors
+
+            # Disclaimer must always be present — append if missing
+            has_disclaimer = any(
+                MEDICAL_DISCLAIMER.lower() in w.lower()
+                for w in parsed.get("warnings", [])
+            )
+            if not has_disclaimer:
+                logger.warning("Medical disclaimer missing — appending automatically")
+                parsed["warnings"].append(MEDICAL_DISCLAIMER)
+
         parsed.pop("next_steps", None)
 
-    # 5. Safe mode specific checks
+    # 6. Safe mode checks
     if mode == "safe":
-        # next_steps max 2
         if len(parsed.get("next_steps", [])) > 2:
             parsed["next_steps"] = parsed["next_steps"][:2]
-        # signals max 3
         if len(parsed.get("signals", [])) > 3:
             parsed["signals"] = parsed["signals"][:3]
-        # is_medical not needed in safe mode
         parsed.pop("is_medical", None)
         parsed.pop("tasks", None)
         parsed.pop("warnings", None)
         parsed.pop("key_items", None)
-
-    # 6. Truncate meaning if too long (model sometimes ignores word limits)
-    meaning = parsed.get("meaning", "")
-    words = meaning.split()
-    if len(words) > 20:
-        parsed["meaning"] = " ".join(words[:20]) + "..."
 
     if errors:
         return None, errors
@@ -430,17 +482,21 @@ def analyze():
     if not ANTHROPIC_API_KEY:
         return jsonify({"error": "Missing ANTHROPIC_API_KEY"}), 500
     # Layer 1 — Azure AI Content Safety screening
+    # If severe self-harm detected, skip all further processing and return crisis response
     safety_result = screen_with_content_safety(msg)
-    print("Content Safety screening complete:", safety_result is not None)
+    if safety_result["crisis"]:
+        logger.warning("Crisis response triggered by Content Safety", extra={
+            "custom_dimensions": {"mode": mode}
+        })
+        return jsonify(CRISIS_RESPONSE)
     # Layer 2 — Azure OpenAI signal extraction (safe mode only — not relevant for simple mode)
     detected_flags = None
     if mode == "safe":
-        try:
-            detected_flags = extract_signals_with_azure(msg)
-        except Exception as e:
-            print("Azure error:", e)
-            detected_flags = None
-        print("Detected flags:", detected_flags)
+        azure_result = extract_signals_with_azure(msg)
+        detected_flags = azure_result["flags"] if azure_result["ok"] else None
+        logger.info("Azure signal extraction", extra={
+            "custom_dimensions": {"ok": str(azure_result["ok"])}
+        })
     # Layer 3 — Anthropic final decision
     prompt = build_prompt(msg, detected_flags, reading_level, mode)
     response = requests.post(
@@ -458,7 +514,7 @@ def analyze():
         timeout=30
     )
     if response.status_code != 200:
-        print("Anthropic error:", response.status_code, response.text)
+        logger.error("Anthropic API error", extra={"custom_dimensions": {"status": str(response.status_code)}})
         return jsonify({"error": response.text}), response.status_code
     result = response.json()
     raw_text = result["content"][0]["text"].strip().replace("```json", "").replace("```", "").strip()
