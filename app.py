@@ -302,6 +302,108 @@ Return exactly these boolean fields:
     except Exception:
         return None
 
+# ── Schema validation ────────────────────────────────
+VALID_RISK_LEVELS = {"Safe", "Caution", "High Risk"}
+
+REQUIRED_FIELDS = {
+    "safe":   ["risk_level", "meaning", "signals", "next_steps"],
+    "simple": ["risk_level", "meaning", "warnings", "key_items", "tasks", "is_medical"],
+}
+
+def validate_response(parsed, mode):
+    errors = []
+
+    # 1. Check required fields exist
+    for field in REQUIRED_FIELDS.get(mode, []):
+        if field not in parsed:
+            errors.append(f"missing field: {field}")
+
+    if errors:
+        return None, errors
+
+    # 2. Normalize risk_level
+    risk = parsed.get("risk_level", "")
+    if risk not in VALID_RISK_LEVELS:
+        # Try case-insensitive fix before failing
+        fixed = next((v for v in VALID_RISK_LEVELS if v.lower() == risk.lower()), None)
+        if fixed:
+            parsed["risk_level"] = fixed
+        else:
+            errors.append(f"invalid risk_level: '{risk}'")
+
+    # 3. Ensure list fields are actually lists
+    list_fields = {
+        "safe":   ["signals", "next_steps"],
+        "simple": ["warnings", "key_items", "tasks"],
+    }
+    for field in list_fields.get(mode, []):
+        val = parsed.get(field)
+        if val is None:
+            parsed[field] = []
+        elif isinstance(val, str):
+            # Model returned a string instead of a list — wrap it
+            parsed[field] = [val]
+        elif not isinstance(val, list):
+            parsed[field] = []
+
+    # 4. Simple mode specific checks
+    if mode == "simple":
+        # is_medical must be a boolean
+        parsed["is_medical"] = bool(parsed.get("is_medical", False))
+
+        # tasks must not be empty
+        if not parsed.get("tasks"):
+            errors.append("tasks list is empty — model returned no steps")
+
+        # tasks must not contain warning-like items (safety check)
+        # If a task starts with "Do not" or "Never" it leaked from warnings
+        clean_tasks = []
+        leaked_warnings = []
+        for task in parsed.get("tasks", []):
+            low = task.strip().lower()
+            if low.startswith("do not") or low.startswith("never ") or low.startswith("avoid "):
+                leaked_warnings.append(task)
+            else:
+                clean_tasks.append(task)
+        if leaked_warnings:
+            logger.warning("Schema validation: warning-type items found in tasks, moving to warnings", extra={
+                "custom_dimensions": {"leaked": str(leaked_warnings)}
+            })
+            parsed["tasks"] = clean_tasks
+            # Append to warnings if not already there
+            existing = [w.lower() for w in parsed.get("warnings", [])]
+            for w in leaked_warnings:
+                if w.lower() not in existing:
+                    parsed["warnings"].append(w)
+
+        # next_steps not needed in simple mode — remove if present
+        parsed.pop("next_steps", None)
+
+    # 5. Safe mode specific checks
+    if mode == "safe":
+        # next_steps max 2
+        if len(parsed.get("next_steps", [])) > 2:
+            parsed["next_steps"] = parsed["next_steps"][:2]
+        # signals max 3
+        if len(parsed.get("signals", [])) > 3:
+            parsed["signals"] = parsed["signals"][:3]
+        # is_medical not needed in safe mode
+        parsed.pop("is_medical", None)
+        parsed.pop("tasks", None)
+        parsed.pop("warnings", None)
+        parsed.pop("key_items", None)
+
+    # 6. Truncate meaning if too long (model sometimes ignores word limits)
+    meaning = parsed.get("meaning", "")
+    words = meaning.split()
+    if len(words) > 20:
+        parsed["meaning"] = " ".join(words[:20]) + "..."
+
+    if errors:
+        return None, errors
+
+    return parsed, []
+
 # ── Routes ────────────────────────────────────────────
 @app.route("/")
 def index():
@@ -362,22 +464,34 @@ def analyze():
     raw_text = result["content"][0]["text"].strip().replace("```json", "").replace("```", "").strip()
     try:
         parsed = json.loads(raw_text)
-        # Store result to Azure Blob Storage
-        store_result_to_blob(parsed)
-        # Application Insights custom telemetry — Accountability
-        logger.info("ClearStep analysis complete", extra={
-            "custom_dimensions": {
-                "risk_level": parsed.get("risk_level"),
-                "mode": mode,
-                "reading_level": reading_level,
-                "is_medical": str(parsed.get("is_medical", False)),
-                "azure_flags_detected": str(detected_flags),
-                "content_safety_ran": str(safety_result is not None)
-            }
-        })
-        return jsonify(parsed)
     except Exception:
-        return jsonify({"error": "Model returned invalid JSON", "raw": raw_text}), 500
+        logger.error("Model returned invalid JSON", extra={"custom_dimensions": {"raw": raw_text[:200]}})
+        return jsonify({"error": "Model returned invalid JSON"}), 500
+
+    # Schema validation — catches missing fields, wrong types, leaked warnings
+    validated, errors = validate_response(parsed, mode)
+    if errors:
+        logger.error("Schema validation failed", extra={
+            "custom_dimensions": {"errors": str(errors), "mode": mode, "raw": raw_text[:200]}
+        })
+        return jsonify({"error": "Response validation failed", "details": errors}), 500
+
+    # Store result to Azure Blob Storage
+    store_result_to_blob(validated)
+
+    # Application Insights telemetry
+    logger.info("ClearStep analysis complete", extra={
+        "custom_dimensions": {
+            "risk_level": validated.get("risk_level"),
+            "mode": mode,
+            "reading_level": reading_level,
+            "is_medical": str(validated.get("is_medical", False)),
+            "azure_flags_detected": str(detected_flags),
+            "content_safety_ran": str(safety_result is not None),
+            "schema_valid": "true"
+        }
+    })
+    return jsonify(validated)
 
 # ── Calendar link builder — no external dependencies ──────────────
 # Joanne's Azure Function is still deployed as a reference/backup:
