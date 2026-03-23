@@ -379,5 +379,46 @@ def analyze():
     except Exception:
         return jsonify({"error": "Model returned invalid JSON", "raw": raw_text}), 500
 
+# ── Calendar proxy — avoids CORS, keeps external calls server-side ──
+CALENDAR_FUNCTION_URL = "https://clearstep-reminders-cyhserg6evdqa0dt.canadaeast-01.azurewebsites.net/api/generate-calendar-link"
+
+@app.route("/api/calendar-link", methods=["POST"])
+def calendar_link():
+    data = request.get_json(silent=True) or {}
+    step_text = data.get("step_text", "").strip()
+    time_choice = data.get("time_choice", "").strip()
+
+    if not step_text or not time_choice:
+        return jsonify({"error": "Missing step_text or time_choice"}), 400
+
+    valid_times = ["1hour", "afternoon", "evening", "tomorrow"]
+    if time_choice not in valid_times:
+        return jsonify({"error": f"Invalid time_choice. Must be one of: {valid_times}"}), 400
+
+    try:
+        response = requests.post(
+            CALENDAR_FUNCTION_URL,
+            headers={"Content-Type": "application/json"},
+            json={"step_text": step_text, "time_choice": time_choice},
+            timeout=10
+        )
+        if response.status_code != 200:
+            print("Calendar function error:", response.status_code, response.text)
+            return jsonify({"error": "Calendar service unavailable"}), 502
+        result = response.json()
+        # Log calendar usage to App Insights
+        logger.info("ClearStep calendar reminder created", extra={
+            "custom_dimensions": {
+                "time_choice": time_choice,
+                "step_text_length": str(len(step_text))
+            }
+        })
+        return jsonify(result)
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "Calendar service timed out"}), 504
+    except Exception as e:
+        print("Calendar proxy error:", e)
+        return jsonify({"error": "Calendar service unavailable"}), 502
+
 if __name__ == "__main__":
     app.run()
