@@ -106,6 +106,7 @@ ClearStep uses 8 Azure services. Each was chosen for a specific reason — not t
 | **Azure Blob Storage** | Audit log — AI response JSON stored per analysis, no raw message content |
 | **Azure Application Insights** | Telemetry — 11 custom events prove safety features are firing in production |
 | **Azure Cosmos DB** | Persistent preferences — palette and reading level stored anonymously per session |
+| **Microsoft Foundry** | Model deployment platform — hosts the signal-classifier (gpt-4o-mini) used in Layer 2 of the AI pipeline |
 
 Full breakdown — why each was chosen, how it's wired, and where in the code: [`docs/AZURE_SERVICES.md`](./docs/AZURE_SERVICES.md)
 
@@ -194,9 +195,9 @@ clearstep/
 
 | Name | Role |
 |---|---|
-| **Leishka Pagan** | Project lead · Product strategy · System architecture · Backend development (app.py) · Frontend development (index.html) · All Azure integrations · Prompt engineering · Medical safety design · UX design · Accessibility design · Security pen testing (14 attack vectors) · Responsible AI design |
-| **Joanne Dada** | Azure infrastructure · Resource provisioning · Key Vault · Blob Storage · App Service deployment · Cosmos DB setup · Cloud integration |
-| **Fatima** | UX design contributions · PowerPoint presentation · Video production |
+| **Leishka Pagan** | Project lead · Product strategy · System architecture · Backend development (app.py) · Frontend development (index.html) · All Azure integrations · Prompt engineering · Medical safety design · UX design · Accessibility design · Security pen testing (14 attack vectors) · Responsible AI design · Full technical documentation (README, ARCHITECTURE, RESPONSIBLE_AI, AZURE_SERVICES, DESIGN_DECISIONS) |
+| **Joanne Dada** | Azure infrastructure · Resource provisioning · Key Vault · Blob Storage · App Service deployment · Cosmos DB setup · Microsoft Foundry deployment (signal-classifier — gpt-4o-mini, Layer 2 of AI pipeline) · Cloud integration |
+| **Fatima** | UX design contributions · PowerPoint presentation · Video production · TBD |
 
 ---
 
