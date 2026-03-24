@@ -1,24 +1,28 @@
 # ClearStep
 ### Microsoft Innovation Challenge Hackathon — March 2026
 
-> **Calm, clear AI guidance for everyone.** AI for calm, structured decision support. ClearStep reduces cognitive overload by helping users handle uncertainty when something feels off and break overwhelming information into clear, actionable steps
+> **Calm, clear AI guidance for everyone.** ClearStep reduces cognitive overload by turning confusing messages, medical instructions, and overwhelming tasks into calm, step-by-step guidance — built for people with ADHD, dyslexia, autism, and anyone who just needs things made simple.
 
 **🔗 Live Demo:** [`https://clearstep-gqb6gpa9hzbdf5gy.canadaeast-01.azurewebsites.net`](https://clearstep-gqb6gpa9hzbdf5gy.canadaeast-01.azurewebsites.net)
 
 ---
 
-## The Problem
+## The Challenge We Solved
 
-Millions of people encounter messages every day that are designed to confuse, pressure, or overwhelm:
+**Cognitive Load Reduction Assistant** — *An adaptive agent system that simplifies work and learning for neurodiverse users.*
 
-- Scam emails engineered to trigger panic and force fast decisions
-- Medical instructions buried in jargon and conditional clauses
-- Government forms with hidden deadlines and buried requirements
-- Work emails that say nothing clearly
+Neurodiverse individuals — including people with ADHD, autism, and dyslexia — face cognitive overload when interacting with complex tasks, dense documents, or unstructured information. The challenge called for an AI-powered assistant that:
 
-For people with ADHD, dyslexia, autism, low digital literacy, or anxiety — these are not minor inconveniences. They are genuine barriers to safety, health, and participation.
+- Transforms information into **clear, structured, and personalised formats** aligned to individual accessibility preferences
+- Decomposes complex instructions into **step-by-step, time-boxed tasks**
+- Simplifies and summarises documents at **adjustable reading levels**
+- Provides **focus support** through reminders and contextual guidance
+- **Securely stores user accessibility preferences** and applies them across interactions
+- Enforces **responsible AI safeguards** — calm, supportive, non-anxiety-inducing language
+- **Explains its simplification choices** (explainability)
+- Could evolve from proof of concept into an **operational, observable accessibility service**
 
-**Most tools try to detect threats. ClearStep focuses on something more human: helping people make better decisions in uncertain situations.**
+ClearStep addresses every requirement in this brief — and goes further by adding a second mode that addresses a gap the challenge did not explicitly cover but directly affects the same population: the ability to verify whether a message is safe to act on at all.
 
 ---
 
