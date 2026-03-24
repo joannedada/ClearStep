@@ -20,7 +20,7 @@ Neurodiverse individuals — Neurodiverse individuals — including people with 
 - **Securely stores user accessibility preferences** and applies them across interactions
 - Enforces **responsible AI safeguards** — calm, supportive, non-anxiety-inducing language
 - **Explains its simplification choices** (explainability)
-- Could evolve from proof of concept into an **operational, observable accessibility service**
+- Evolve from proof of concept into an **operational, observable accessibility service**
 
 ClearStep addresses the core goals of this brief through structured simplification, adjustable reading levels, persistent preferences, explainability, and calm, safety-aware guidance. Rather than enforcing time-boxed execution, it uses low-pressure step sequencing with optional reminders — a deliberate choice to avoid adding urgency for users already experiencing cognitive overload. It also extends the brief with a second mode focused on a closely related need: helping users decide whether something feels safe to act on at all.
 
