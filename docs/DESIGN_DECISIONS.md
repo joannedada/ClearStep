@@ -111,6 +111,8 @@ Time options: `1hour` (now + 60 min, rounded), `afternoon` (2:00 PM), `evening` 
 
 If the Anthropic API fails, the frontend `fallback()` function runs a local keyword scoring pass in JavaScript. Detects urgent language (+3), suspicious links (+2), gift card requests (+4), and medical keywords. Returns a structured result in the exact same schema as the API — the user always gets something, even if the server is unreachable.
 
+**Fallback transparency:** Every fallback result carries a `_fallback: true` flag. When `renderResult()` detects this flag, it displays a visible caution bar: *"AI unavailable — showing basic analysis only. Results may be less accurate."* The bar uses the caution palette and monospace font to visually distinguish it from normal results. This ensures the app never silently presents keyword-matching as AI analysis — a core transparency requirement.
+
 ---
 
 
@@ -123,6 +125,13 @@ If the Anthropic API fails, the frontend `fallback()` function runs a local keyw
 - **No raw message content stored anywhere**
 - **No API keys in any file** — Key Vault only, with env var fallback
 - **Content Safety runs before any LLM** — adversarial inputs never reach the model pipeline
+- **Rate limiting:** Flask-Limiter enforces per-IP request caps — 10/minute on `/api/analyze`, 20/minute on `/api/calendar-link`. Prevents token burning, credit abuse, and denial-of-service.
+- **CORS restriction:** Flask-CORS locks all API endpoints to the ClearStep domain and localhost. No third-party website can call the backend.
+- **XSS sanitisation:** A dedicated `esc()` function in `index.html` escapes all model-derived content before DOM insertion. Every `innerHTML` that renders signals, next_steps, tasks, key_items, or explainability text is wrapped in `esc()`. If a model returns `<script>` tags or HTML payloads, they render as plain text.
+- **Generic error responses:** Upstream API errors (Anthropic, Azure OpenAI) are logged server-side with detail but never returned to the user. The frontend receives only `"Analysis service temporarily unavailable. Please try again."` — no internal URLs, auth details, or stack traces leak.
+- **Fallback transparency:** When the AI is unavailable and client-side keyword scoring runs instead, a visible caution bar informs the user: *"AI unavailable — showing basic analysis only."* The app never silently pretends a keyword match is an AI result.
+
+Full security documentation: [`docs/SECURITY.md`](./docs/SECURITY.md)
 
 ---
 
