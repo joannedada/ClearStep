@@ -100,6 +100,6 @@ For a quick overview of all 9 services, see the [README](../README.md#azure-serv
 ### 9. Microsoft Foundry
 **Why it was chosen:** Foundry provides the managed deployment platform for Azure OpenAI models. Rather than calling a raw API endpoint, Foundry gives the team a dedicated deployment with controlled capacity, version management, rate limits, and monitoring — all in one place.
 
-**How the app uses it:** Joanne deployed the `signal-classifier` endpoint through Foundry using `gpt-4o-mini`. This is the model called by `extract_signals_with_azure()` in Layer 2 of the pipeline. The deployment runs at 100,000 tokens/minute with a Standard deployment type. The endpoint URL and key are stored in Azure Key Vault and loaded at startup.
+**How the app uses it:** Deployed the `signal-classifier` endpoint through Foundry using `gpt-4o-mini`. This is the model called by `extract_signals_with_azure()` in Layer 2 of the pipeline. The deployment runs at 100,000 tokens/minute with a Standard deployment type. The endpoint URL and key are stored in Azure Key Vault and loaded at startup.
 
 **Where in code:** `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_DEPLOYMENT` variables in `app.py` — both point to the Foundry-managed signal-classifier deployment.
