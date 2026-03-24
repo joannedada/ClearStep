@@ -46,10 +46,10 @@ Paste anything overwhelming — medical instructions, government appeals, confus
 
 ## Intentional Design Philosophy
 
-**Nothing in this application is accidental.** Every colour, every spacing decision, every word of copy, every interaction pattern was deliberately chosen with one goal: reduce cognitive load, not add to it.
+**ClearStep was intentionally designed to reduce cognitive load at both the system and interface level. Visual choices, interaction patterns, and response structure were all shaped around the same goal: helping users move forward with less stress and more clarity.**
 
 ### The Core Principle
-> If the user feels panic, the system has failed.
+> If the system adds pressure, it has failed.
 
 ClearStep was designed around this constraint. Every design decision flows from it.
 
