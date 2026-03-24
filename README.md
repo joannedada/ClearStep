@@ -118,9 +118,9 @@ Full breakdown — why each was chosen, how it's wired, and where in the code: [
 | Principle | What ClearStep built |
 |---|---|
 | **Accountability** | Every analysis logged to Blob Storage. 11 App Insights events track system behaviour in production. |
-| **Reliability & Safety** | Crisis response hardcoded — cannot be altered by model behaviour. Medical hardening enforced in Python. Schema validation rejects malformed output. Fallback ensures availability. |
+| **Reliability & Safety** | Crisis response hardcoded — cannot be altered by model behaviour. Medical hardening enforced in Python. Schema validation rejects malformed output. Fallback ensures availability. Rate limiting prevents abuse. XSS sanitisation protects against model output injection. |
 | **Fairness** | 5 accessibility palettes designed for specific neurological needs. Reading level changes AI output density. Language detection serves non-English speakers automatically. |
-| **Transparency** | "Why this result?" panel on every output. AI tool disclaimer always visible. Medical content always defers to original document. |
+| **Transparency** | "Why this result?" panel on every output. AI tool disclaimer always visible. Medical content always defers to original document. Fallback mode shows visible indicator when AI is unavailable. |
 | **Privacy** | No message content stored. Cosmos DB stores anonymous session ID + two preference values only. No accounts, no tracking. |
 | **Human Oversight** | Medical and legal content always defers to real professionals. Crisis response sends users to human services (988). App never presents itself as a replacement. |
 | **Inclusiveness** | Built for ADHD, dyslexia, autism, low digital literacy, elderly users, and non-English speakers. Every design decision is an accessibility decision. |
@@ -147,6 +147,8 @@ Full mapping: [`docs/RESPONSIBLE_AI.md`](./docs/RESPONSIBLE_AI.md)
 | Audit log | Azure Blob Storage | Immutable result log, no PII, structured for analysis |
 | Observability | Azure Application Insights | 11 custom events, production safety monitoring |
 | Deployment | Azure App Service + GitHub Actions CI/CD | Managed hosting, automatic deployments on push to main |
+| Rate limiting | Flask-Limiter | Per-IP request caps — 10/min on analyze, 20/min on calendar |
+| CORS | Flask-CORS | API locked to ClearStep domain — no third-party access |
 
 ---
 
@@ -186,8 +188,19 @@ clearstep/
 │   └── workflows/          # Azure App Service CI/CD pipeline
 └── docs/
     ├── ARCHITECTURE.md     # Full system design and request flow
-    └── RESPONSIBLE_AI.md   # Microsoft RAI Standard v2 mapping
+    ├── RESPONSIBLE_AI.md   # Microsoft RAI Standard v2 mapping
+    ├── SECURITY.md         # Application security hardening and test results
+    ├── AZURE_SERVICES.md   # Every Azure integration explained
+    └── DESIGN_DECISIONS.md # Why we built it the way we did
 ```
+
+---
+
+## Roadmap
+
+- **Attachment support:** Drag-and-drop for screenshots, photos, and documents — for users who can't copy/paste. Requires Azure AI Vision (OCR) integration to extract text before the existing pipeline processes it.
+- **Session history:** Optional anonymous history so users can revisit past analyses
+- **Browser extension:** "Is This Safe?" directly from email clients
 
 ---
 
@@ -195,9 +208,9 @@ clearstep/
 
 | Name | Role |
 |---|---|
-| **Leishka Pagan** | Project lead · Product strategy · System architecture · Backend development (app.py) · Frontend development (index.html) · Azure integrations · Prompt engineering · Medical safety design · UX design · Accessibility design · Security pen testing (14 attack vectors) · Responsible AI design ·  Technical documentation |
+| **Leishka Pagan** | Project lead · Product strategy · System architecture · Backend development (app.py) · Frontend development (index.html) · All Azure integrations · Prompt engineering · Medical safety design · UX design · Accessibility design · Security pen testing (14 attack vectors) · Responsible AI design · Technical documentation |
 | **Joanne Dada** | Azure infrastructure · Resource provisioning · Key Vault · Blob Storage · App Service deployment · Cosmos DB setup · Microsoft Foundry deployment · Cloud integration |
-| **Fatima** |  TBD |
+| **Fatima** | TBD |
 
 ---
 
