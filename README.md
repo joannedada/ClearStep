@@ -9,9 +9,9 @@
 
 ## The Challenge We Solved
 
-**Cognitive Load Reduction Assistant** — *An adaptive agent system that simplifies work and learning for neurodiverse users.*
+**Cognitive Load Reduction Assistant** — *An adaptive AI system that simplifies complex information for users experiencing cognitive overload.*
 
-Neurodiverse individuals — including people with ADHD, autism, and dyslexia — face cognitive overload when interacting with complex tasks, dense documents, or unstructured information. The challenge called for an AI-powered assistant that:
+Neurodiverse individuals — Neurodiverse individuals — including people with ADHD, autism, and dyslexia — can experience cognitive overload when interacting with dense documents, complex tasks, or unstructured information. The challenge called for an AI-powered assistant that could:
 
 - Transforms information into **clear, structured, and personalised formats** aligned to individual accessibility preferences
 - Decomposes complex instructions into **step-by-step, time-boxed tasks**
@@ -22,7 +22,7 @@ Neurodiverse individuals — including people with ADHD, autism, and dyslexia �
 - **Explains its simplification choices** (explainability)
 - Could evolve from proof of concept into an **operational, observable accessibility service**
 
-ClearStep addresses every requirement in this brief — and goes further by adding a second mode that addresses a gap the challenge did not explicitly cover but directly affects the same population: the ability to verify whether a message is safe to act on at all.
+ClearStep addresses the core goals of this brief through structured simplification, adjustable reading levels, persistent preferences, explainability, and calm, safety-aware guidance. Rather than enforcing time-boxed execution, it uses low-pressure step sequencing with optional reminders — a deliberate choice to avoid adding urgency for users already experiencing cognitive overload. It also extends the brief with a second mode focused on a closely related need: helping users decide whether something feels safe to act on at all.
 
 ---
 
