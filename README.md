@@ -94,7 +94,7 @@ User Input
 
 ## Azure Services
 
-ClearStep uses 8 Azure services. Each was chosen for a specific reason — not to pad a list.
+ClearStep uses 9 Azure services and Microsoft Foundry. Each was chosen for a specific reason — not to pad a list.
 
 | Service | Purpose |
 |---|---|
@@ -197,7 +197,7 @@ clearstep/
 |---|---|
 | **Leishka Pagan** | Project lead · Product strategy · System architecture · Backend development (app.py) · Frontend development (index.html) · All Azure integrations · Prompt engineering · Medical safety design · UX design · Accessibility design · Security pen testing (14 attack vectors) · Responsible AI design · Full technical documentation (README, ARCHITECTURE, RESPONSIBLE_AI, AZURE_SERVICES, DESIGN_DECISIONS) |
 | **Joanne Dada** | Azure infrastructure · Resource provisioning · Key Vault · Blob Storage · App Service deployment · Cosmos DB setup · Microsoft Foundry deployment (signal-classifier — gpt-4o-mini, Layer 2 of AI pipeline) · Cloud integration |
-| **Fatima** | UX design contributions · PowerPoint presentation · Video production · TBD |
+| **Fatima** | TBD |
 
 ---
 
