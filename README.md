@@ -63,7 +63,7 @@ User Input
           Non-English → lang_instruction injected into Layer 3 prompt
     │
     ▼ (Is This Safe? mode only)
-[Layer 2b] Azure OpenAI
+[Layer 2b] Azure OpenAI via Microsoft Foundry
           Extracts 5 boolean signal flags:
           urgency / money_request / impersonation / suspicious_link / threat_language
           Flags passed as context to Layer 3
@@ -100,7 +100,7 @@ ClearStep uses 9 Azure services and Microsoft Foundry. Each was chosen for a spe
 |---|---|
 | **Azure App Service** | Hosts the Flask application — managed hosting with GitHub Actions CI/CD |
 | **Azure AI Content Safety** | Crisis screening — runs before any LLM, hardcoded 988 response at severity 4 |
-| **Azure OpenAI** | Signal extraction — 5 boolean flags injected into Claude's prompt as context |
+| **Azure OpenAI via Microsoft Foundry** | Signal extraction — 5 boolean flags injected into Claude's prompt as context |
 | **Azure AI Language** | Language detection — non-English inputs trigger multilingual Claude response |
 | **Azure Key Vault** | Secrets management — no keys in code or config files, Managed Identity auth |
 | **Azure Blob Storage** | Audit log — AI response JSON stored per analysis, no raw message content |
@@ -139,7 +139,7 @@ Full mapping: [`docs/RESPONSIBLE_AI.md`](./docs/RESPONSIBLE_AI.md)
 | Frontend | Vanilla HTML/CSS/JS — single file, no build step | Zero dependency surface, instant load, works on any device |
 | Backend | Python Flask + Gunicorn | Lightweight, fast, native Azure deployment support |
 | Primary AI | Anthropic Claude `claude-sonnet-4-20250514` | Best-in-class reasoning for medical and safety content |
-| Signal extraction | Azure OpenAI (gpt-4o-mini) | Fast, cheap, zero-temperature classification — clean role separation |
+| Signal extraction | Azure OpenAI (gpt-4o-mini) via Microsoft Foundry | Fast, cheap, zero-temperature classification — deployed and managed through Foundry |
 | Crisis screening | Azure AI Content Safety | Hardened, purpose-built safety layer — not a prompt |
 | Language detection | Azure AI Language | Automatic multilingual support without UI complexity |
 | Secrets | Azure Key Vault + DefaultAzureCredential | Zero secrets in code or config files |
@@ -197,7 +197,7 @@ clearstep/
 |---|---|
 | **Leishka Pagan** | Project lead · Product strategy · System architecture · Backend development (app.py) · Frontend development (index.html) · All Azure integrations · Prompt engineering · Medical safety design · UX design · Accessibility design · Security pen testing (14 attack vectors) · Responsible AI design · Full technical documentation (README, ARCHITECTURE, RESPONSIBLE_AI, AZURE_SERVICES, DESIGN_DECISIONS) |
 | **Joanne Dada** | Azure infrastructure · Resource provisioning · Key Vault · Blob Storage · App Service deployment · Cosmos DB setup · Microsoft Foundry deployment (signal-classifier — gpt-4o-mini, Layer 2 of AI pipeline) · Cloud integration |
-| **Fatima** | TBD |
+| **Fatima** |  TBD |
 
 ---
 
