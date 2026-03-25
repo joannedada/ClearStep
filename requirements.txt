@@ -7,3 +7,5 @@ azure-storage-blob
 azure-cosmos
 azure-ai-textanalytics
 opencensus-ext-azure
+python-docx
+pypdf
