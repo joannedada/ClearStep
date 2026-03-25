@@ -327,13 +327,13 @@ def build_prompt(msg, detected_flags=None, reading_level="standard", mode="safe"
 
     if reading_level == "simple":
         meaning_rule = "meaning: ONE sentence only. Max 8 words. Use the simplest everyday words possible. Like explaining to a 10-year-old."
-        steps_rule = "tasks: Each step max 8 words. Simple action words only. Physical actions from the source text only."
+        steps_rule = "tasks: Each step max 8 words. Simple action words only. Physical actions from the source text only. If a step needs more than 8 words, split it into 2 separate steps."
     elif reading_level == "detailed":
         meaning_rule = "meaning: ONE sentence only. Max 15 words. Include the key context and reason why this matters."
-        steps_rule = "tasks: Be specific about what to do. Include context where helpful. Still physical actions only."
+        steps_rule = "tasks: Be specific about what to do. Include context where helpful. Still physical actions only. Max 8 words each. If a step needs more than 8 words, split it into 2 separate steps."
     else:
         meaning_rule = "meaning: ONE sentence only. Max 12 words. Simple and calm. No technical words."
-        steps_rule = "tasks: Each step max 10 words. Simple action words. Physical actions only."
+        steps_rule = "tasks: Each step max 10 words. Simple action words. Physical actions only. If a step needs more than 10 words, split it into 2 separate steps."
 
     if mode == "simple":
         mode_instruction = f"""
@@ -341,6 +341,12 @@ You are breaking down a complex message into the clearest possible structure for
 
 FIRST: Detect if this message contains medical instructions, medication directions, or health advice.
 Set "is_medical": true if yes, false if no.
+
+CRITICAL EXTRACTION RULE:
+Extract ONLY the actual steps and actions that appear in the message.
+NEVER invent general advice, time-management tips, or meta-instructions like "Choose most important tasks", "Write them on paper", or "Take breaks".
+If the message contains a list of steps, those steps ARE the tasks — extract them directly.
+If the message contains instructions, those instructions ARE the tasks — follow them exactly.
 
 STRICT SEPARATION RULES — read carefully:
 
@@ -380,7 +386,7 @@ Keep warnings under 8 words each.
 
 STRICT LENGTH RULES — this app is for cognitively overwhelmed users. Brevity is safety.
 - key_items: EXACTLY 2-4 words each. Label the fact only. Examples: "60-day deadline", "Two forms of ID", "Twice daily with food". NEVER a full sentence.
-- tasks: Max 8 words each. One physical action. Start with a verb. Examples: "Take 1 tablet with food", "Submit form by certified mail". NEVER a compound sentence.
+- tasks: Max 8 words each. One physical action. Start with a verb. Examples: "Take 1 tablet with food", "Submit form by certified mail". If an action cannot fit in 8 words, split it into 2 tasks. NEVER a compound sentence.
 - warnings: Max 8 words each. Short facts only.
 - meaning: Max 12 words. One sentence.
 """
