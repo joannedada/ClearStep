@@ -406,7 +406,7 @@ footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--bg3);disp
             <div class="tts-row"><div class="warn-label">⚠ Before you start</div><button class="tts-btn" id="ttsWarnings" onclick="ttsToggle('warnings')" style="display:none;" title="Read aloud"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg></button></div>
             <ul class="warn-list" id="warnList"></ul>
           </div>
-          <div id="batchNotice" class="batch-notice" style="display:none;">This document has many required actions. To keep things clear, ClearStep shows 5 steps at a time. The next set will appear after you complete these.</div>
+          <div id="batchNotice" class="batch-notice" style="display:none;">Long document — showing 5 steps at a time. More will follow.</div>
           <div class="simple-start">
             <button class="start-btn" onclick="startSteps()">Start with Step 1 →</button>
             <button class="see-all-btn" onclick="toggleAllSteps()">See all steps</button>
@@ -488,12 +488,12 @@ footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--bg3);disp
           </div>
         </div>
         <div id="simplePhase3" class="simple-phase" style="display:none;">
-          <div class="complete-view">
+          <div class="complete-view" style="padding-bottom:0;">
             <div class="complete-icon">✓</div>
             <div class="complete-text">All steps complete.</div>
             <div class="complete-sub">Well done. Take a breath.</div>
           </div>
-          <div class="completed-dropdown" id="completedDropdown" style="display:none;">
+          <div class="completed-dropdown" id="completedDropdown" style="display:none;margin:1rem 1.4rem 1.4rem;">
             <button class="completed-dropdown-toggle" id="completedDropdownToggle" onclick="toggleCompletedDropdown()">
               <span id="completedDropdownLabel">View completed steps</span>
               <svg class="cd-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -627,7 +627,7 @@ const RL_LH={simple:'2.0',standard:'1.75',detailed:'1.65'};
 function loadRL(){try{const s=localStorage.getItem('cs_rl');if(s){const b=document.querySelector(`[data-rl="${s}"]`);if(b)setRL(b);}}catch(e){}}
 let state={tasks:[],currentIndex:0,completed:[],showAll:false,done:false,reminderMins:null};
 function showPhase(n){[1,2,3,4].forEach(i=>{const el=document.getElementById('simplePhase'+i);if(el)el.style.display=i===n?'block':'none';});}
-function initTasks(tasks){allTasks=tasks;batchStart=0;const batch=allTasks.slice(0,TASK_BATCH_SIZE);state={tasks:batch,currentIndex:0,completed:[],showAll:false,done:false,reminderMins:null};const notice=document.getElementById('batchNotice');if(notice)notice.style.display=allTasks.length>TASK_BATCH_SIZE?'block':'none';showPhase(1);renderAllStepsLists();}
+function initTasks(tasks){allTasks=tasks;batchStart=0;allCompleted=[];const batch=allTasks.slice(0,TASK_BATCH_SIZE);state={tasks:batch,currentIndex:0,completed:[],showAll:false,done:false,reminderMins:null};const notice=document.getElementById('batchNotice');if(notice)notice.style.display=allTasks.length>TASK_BATCH_SIZE?'block':'none';showPhase(1);renderAllStepsLists();}
 function startSteps(){if(!state.tasks.length)return;showPhase(2);renderStep();}
 function renderStep(){if(state.done){showPhase(3);return;}const i=state.currentIndex;const total=state.tasks.length;const numCur=document.getElementById('stepNumCurrent');const numTot=document.getElementById('stepNumTotal');const fill=document.getElementById('stepProgressFill');if(numCur){numCur.style.opacity='0';setTimeout(()=>{numCur.textContent=(i+1);numCur.style.opacity='1';},150);}if(numTot)numTot.textContent=total;if(fill)fill.style.width=((i+1)/total*100)+'%';const task=document.getElementById('stepTask');if(task)task.textContent=state.tasks[i]||'';ttsStop();const sb=document.getElementById('ttsStep');if(sb)sb.style.display=state.tasks[i]?'inline-flex':'none';const markArea=document.getElementById('markDoneArea');const undoArea=document.getElementById('undoArea');if(markArea)markArea.style.display='block';if(undoArea)undoArea.style.display='none';resetReminderUI();renderDoneList();renderAllStepsLists();}
 function renderDoneList(){const wrap=document.getElementById('unifiedSteps');const list=document.getElementById('unifiedList');if(!list)return;if(state.tasks.length===0){if(wrap)wrap.style.display='none';return;}if(wrap)wrap.style.display='block';list.innerHTML='';if(state.completed.length>1){const undoAll=document.createElement('button');undoAll.className='undo-all-btn';undoAll.textContent='Undo all completed';undoAll.onclick=()=>undoAllSteps();list.appendChild(undoAll);}state.tasks.forEach((task,idx)=>{const done=state.completed.includes(idx);const isCurrent=idx===state.currentIndex&&!done;const li=document.createElement('li');li.className='unified-item'+(done?' unified-done':isCurrent?' unified-current':' unified-future');if(done){li.innerHTML=`<span class="u-check">✓</span><span class="u-text">${esc(task)}</span><button class="done-undo-btn" onclick="undoSpecificStep(${idx})">Undo</button>`;}else if(isCurrent){li.innerHTML=`<span class="u-num">${idx+1}</span><span class="u-text">${esc(task)}</span><span class="u-tag">Now</span>`;}else{li.innerHTML=`<span class="u-num">${idx+1}</span><span class="u-text">${esc(task)}</span>`;}list.appendChild(li);});}
