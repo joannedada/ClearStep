@@ -1018,7 +1018,7 @@ def extract_text_from_image(file_obj):
     if not image_bytes:
         raise ValueError("Image file is empty")
 
-    # Azure AI Vision 4.0 Image Analysis — Foundry endpoint
+    # Azure Computer Vision — tries 4.0 Image Analysis API first, falls back to legacy Read API
     url = f"{AZURE_VISION_ENDPOINT.rstrip('/')}/computervision/imageanalysis:analyze?api-version=2024-02-01&features=read"
     try:
         response = requests.post(
@@ -1032,19 +1032,28 @@ def extract_text_from_image(file_obj):
         )
         if response.status_code != 200:
             logger.warning("ClearStep ocr_api_failed", extra={
-                "custom_dimensions": {"status": str(response.status_code), "body": response.text[:200]}
+                "custom_dimensions": {"status": str(response.status_code), "body": response.text[:300]}
             })
-            raise RuntimeError(f"OCR API returned {response.status_code}")
+            raise RuntimeError(f"OCR API returned {response.status_code}: {response.text[:200]}")
 
         result = response.json()
-        # Azure Vision 4.0 response shape: result.readResult.blocks[].lines[].text
         lines = []
+
+        # Try 4.0 response shape first: readResult.blocks[].lines[].text
         read_result = result.get("readResult", {})
         for block in read_result.get("blocks", []):
             for line in block.get("lines", []):
                 line_text = line.get("text", "").strip()
                 if line_text:
                     lines.append(line_text)
+
+        # Fall back to legacy response shape: regions[].lines[].words[].text
+        if not lines:
+            for region in result.get("regions", []):
+                for line in region.get("lines", []):
+                    words = [w.get("text", "") for w in line.get("words", [])]
+                    if words:
+                        lines.append(" ".join(words))
 
         return "\n".join(lines)
 
