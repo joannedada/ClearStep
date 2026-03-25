@@ -395,7 +395,7 @@ footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--bg3);disp
             <div class="tts-row"><div class="warn-label">⚠ Before you start</div><button class="tts-btn" id="ttsWarnings" onclick="ttsToggle('warnings')" style="display:none;" title="Read aloud"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg></button></div>
             <ul class="warn-list" id="warnList"></ul>
           </div>
-          <div id="batchNotice" class="batch-notice" style="display:none;">This document has many required actions. To keep things clear, ClearStep shows 10 priority steps at a time. Remaining steps will appear after the current set is completed.</div>
+          <div id="batchNotice" class="batch-notice" style="display:none;">This document has many required actions. To keep things clear, ClearStep shows 5 steps at a time. The next set will appear after you complete these.</div>
           <div class="simple-start">
             <button class="start-btn" onclick="startSteps()">Start with Step 1 →</button>
             <button class="see-all-btn" onclick="toggleAllSteps()">See all steps</button>
@@ -572,7 +572,7 @@ let currentMode=null,allTasks=[],shownTaskCount=0;
 let simpleBadgeOverride=null;
 const SIMPLE_BADGE_MAP=['MEDICAL','IMPORTANT','COMPLEX','COMPLEX'];
 const BATCH_SIZE=5;
-const TASK_BATCH_SIZE=10;
+const TASK_BATCH_SIZE=5;
 let batchStart=0;
 let doneTaskIndices=[],currentIsMedical=false;
 function selectMode(mode){ttsStop();simpleBadgeOverride=null;clearUpload();currentMode=mode;document.getElementById('modeScreen').style.display='none';document.querySelector('.topbar-right').style.opacity='1';document.querySelector('.topbar-right').style.pointerEvents='';const appScreen=document.getElementById('appScreen');appScreen.classList.add('visible');if(mode==='safe'){document.getElementById('screenTitle').textContent='IS THIS SAFE?';document.getElementById('screenDesc').textContent='Paste a message or email. Get the risk and what to do next.';document.getElementById('msgInput').placeholder='Paste a message, email, or link — nothing is stored or shared.';document.getElementById('inputLabel').textContent='Paste the message you want to check';document.getElementById('analyzeBtn').textContent='CHECK MESSAGE';document.getElementById('loadingText').textContent='Checking your message...';renderSafeChips();}else{document.getElementById('screenTitle').textContent='MAKE IT SIMPLE';document.getElementById('screenDesc').textContent='Paste anything overwhelming. Get calm, clear steps — one at a time.';document.getElementById('msgInput').placeholder='Paste what feels overwhelming...';document.getElementById('inputLabel').textContent='Paste what feels overwhelming';document.getElementById('analyzeBtn').textContent='BREAK THIS DOWN';document.getElementById('loadingText').textContent='Breaking this down for you...';renderSimpleChips();}}
