@@ -106,8 +106,7 @@ def get_cosmos_container():
         db = client.create_database_if_not_exists(id=COSMOS_DB_NAME)
         container = db.create_container_if_not_exists(
             id=COSMOS_CONTAINER_NAME,
-            partition_key=PartitionKey(path="/session_id"),
-            offer_throughput=400
+            partition_key=PartitionKey(path="/session_id")
         )
         return container
     except Exception as e:
