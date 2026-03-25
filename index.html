@@ -589,7 +589,6 @@ function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/
 let currentMode=null,allTasks=[],shownTaskCount=0;
 let simpleBadgeOverride=null;
 const SIMPLE_BADGE_MAP=['MEDICAL','IMPORTANT','COMPLEX','COMPLEX'];
-const BATCH_SIZE=5;
 const TASK_BATCH_SIZE=5;
 let batchStart=0;
 let allCompleted=[];
@@ -698,7 +697,7 @@ function handleFileSelect(input){
   const blocked=['.js','.py','.sh','.ps1','.bat','.cmd','.exe','.dll','.scr','.jar','.msi','.apk','.zip','.rar','.7z','.tar','.gz','.iso','.html','.svg','.xml'];
   if(blocked.includes(ext)){showUploadError('This file type is not allowed.');input.value='';return;}
   const allowed=['.txt','.pdf','.doc','.docx','.png','.jpg','.jpeg'];
-  if(!allowed.includes(ext)){showUploadError('Supported files: .txt, .pdf, .doc, .docx');input.value='';return;}
+  if(!allowed.includes(ext)){showUploadError('Supported files: .txt, .pdf, .doc, .docx, .png, .jpg, .jpeg');input.value='';return;}
   if(file.size>5*1024*1024){showUploadError('File too large. Maximum size is 5 MB.');input.value='';return;}
   uploadedFile=file;
   document.getElementById('uploadFilename').textContent=file.name;
