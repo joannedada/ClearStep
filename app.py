@@ -327,13 +327,12 @@ def build_prompt(msg, detected_flags=None, reading_level="standard", mode="safe"
 
     if reading_level == "simple":
         meaning_rule = "meaning: ONE sentence only. Max 8 words. Use the simplest everyday words possible. Like explaining to a 10-year-old."
-        steps_rule = "tasks: Each step max 8 words. Simple action words only. Physical actions from the source text only. If a step needs more than 8 words, split it into 2 separate steps."
     elif reading_level == "detailed":
         meaning_rule = "meaning: ONE sentence only. Max 15 words. Include the key context and reason why this matters."
-        steps_rule = "tasks: Be specific about what to do. Include context where helpful. Still physical actions only. Max 8 words each. If a step needs more than 8 words, split it into 2 separate steps."
     else:
         meaning_rule = "meaning: ONE sentence only. Max 12 words. Simple and calm. No technical words."
-        steps_rule = "tasks: Each step max 10 words. Simple action words. Physical actions only. If a step needs more than 10 words, split it into 2 separate steps."
+    # steps_rule is now unified across all reading levels — see TASK STRUCTURE RULES in mode_instruction
+    steps_rule = ""
 
     if mode == "simple":
         mode_instruction = f"""
@@ -342,42 +341,62 @@ You are breaking down a complex message into the clearest possible structure for
 FIRST: Detect if this message contains medical instructions, medication directions, or health advice.
 Set "is_medical": true if yes, false if no.
 
-CRITICAL EXTRACTION RULE — this is the most important rule:
-Your job is to EXTRACT, not summarise.
-Every task that appears in the message must become a task in your output.
-If the message contains 20 items, you return 20 tasks.
-If the message contains 50 items, you return 50 tasks.
-NEVER condense multiple tasks into one.
-NEVER replace real tasks with meta-advice like "Pick the most urgent tasks", "Start with one task", or "Focus on today only".
-NEVER comment on the length of the list or suggest the user do fewer tasks.
-The user knows how many tasks they have. Your job is to organise them clearly, not to filter them.
+CONTENT CLASSIFICATION — before writing any task or warning, classify every piece of information:
+
+ROUTINE TASK: A single physical action performed at a specific moment. One action. One moment. No "and".
+  Examples: "Take 1 tablet with food", "Submit form by certified mail", "Call your doctor"
+
+FREQUENCY RULE: How often a routine task repeats ("twice daily", "every 8 hours", "three times a day").
+  → Do NOT add frequency as extra words to a task.
+  → Use frequency to determine how many task instances to create.
+  → "Twice daily" = create two separate task instances with time context embedded.
+  EXAMPLE: "Take 1 tablet twice daily with food"
+    WRONG: ["Take 1 tablet twice daily with food"]  ← stacked
+    WRONG: ["Take 1 tablet", "Twice daily", "With food"]  ← atomized
+    RIGHT: ["Take 1 tablet with food — morning", "Take 1 tablet with food — evening"]
+
+DURATION RULE: How long something continues ("for 7 days", "for 2 weeks").
+  → Never create a task for this. Surface it as a key_item only.
+  EXAMPLE: "for 7 days" → key_item: "7-day course"
+
+EXCEPTION CONDITION: What to do in an unusual scenario ("if you miss a dose", "unless", "in case of").
+  → Always a WARNING. Never a task.
+
+PROHIBITION: Something the person must never do ("do not crush", "avoid alcohol", "never double up").
+  → Always a WARNING. Never a task.
+
+WARNINGS AND TASKS ARE MUTUALLY EXCLUSIVE:
+- If something is in warnings, it cannot appear in tasks in any form — not even rephrased.
+- "Swallow whole — never crush or chew" in warnings means "Take tablet whole" must NOT appear in tasks.
+- The task is simply: "Take 1 tablet with food" — the method is not the user's action to manage.
+- Zero overlap between the two lists.
+
+EXTRACTION RULE:
+- Extract every routine task from the source. Do not invent tasks not in the document.
+- Do not add meta-advice like "Pick most urgent tasks" or "Focus on today only".
+- Do not comment on list length or suggest the user do fewer tasks.
+
+TASK STRUCTURE — this app is for neurodivergent users. One action per step is not a style preference. It is a cognitive safety requirement:
+- ONE physical action per task. One moment in time. No "and" between two actions.
+- If a task contains "and" followed by a second action, split it into two tasks.
+- If a task contains a time qualifier ("in the morning", "before bed"), embed it naturally — do not append it as a second clause.
+- Max 8 words per task. If the action cannot be described in 8 words, split it — never truncate.
+- Start every task with an action verb: Take, Call, Submit, Sign, Go, Open, Write, Pay, Reply, Schedule, Gather.
 
 WARNINGS rule — warnings come ONLY from the document:
-WARNINGS = things the person must NEVER do, or explicit safety rules stated in the message.
-NEVER add warnings that are your own opinion about the task list.
-NEVER add warnings like "Very long list may cause overwhelm" or "Consider doing fewer tasks" — these are not in the document.
-If the message contains no warnings or safety rules, warnings must be an empty array.
-
-STRICT SEPARATION RULES:
-TASKS = physical actions the person needs to DO, in the order they do them.
-A task starts with an action verb: Take, Call, Submit, Sign, Go, Set, Open, Write, Buy, Clean, Pay, Reply, Schedule.
-"Do not" is NEVER a task.
-
-TASK ORDER RULES:
-- Tasks must be in the real-world order a person would do them, one after another.
-- Do not repeat information that is already in warnings.
+- Only include warnings that are explicitly stated as prohibitions, restrictions, or exception conditions in the source.
+- Never add opinion-based warnings about list length or complexity.
+- If no warnings exist in the document, warnings must be an empty array.
 
 MEDICAL SAFEGUARD RULES — apply when is_medical is true:
-- Never invent, infer, or add any medical step not explicitly stated in the original message.
-- Never paraphrase dosing numbers, quantities, or timing. Copy them verbatim.
-- Every restriction, interaction warning, and timing rule must appear in warnings.
-- Conditional instructions ("if you miss a dose", "if it is almost time", "unless", "in case") are WARNINGS, never tasks. They describe exception scenarios, not regular actions.
+- Never invent, infer, or add any medical step not in the original message.
+- Copy dosing numbers, quantities, and timing verbatim — never paraphrase.
+- Every prohibition, interaction warning, exception condition, and timing restriction goes in warnings.
 
 MANDATORY DISCLAIMER — always last in warnings when is_medical is true:
 - Always include this exact string as the final item in warnings:
   "Reminder tool only — always follow your original prescription"
 
-{steps_rule}
 {lang_instruction}
 
 Return ONLY this JSON:
@@ -390,14 +409,11 @@ Return ONLY this JSON:
   "tasks": ["action step 1", "action step 2", "action step 3"]
 }}
 
-WARNINGS format rule: Write warnings as short facts without "Do not" prefix.
-Keep warnings under 8 words each.
-
-STRICT LENGTH RULES — this app is for cognitively overwhelmed users. Brevity is safety.
-- key_items: EXACTLY 2-4 words each. Label the fact only. Examples: "60-day deadline", "Two forms of ID", "Twice daily with food". NEVER a full sentence.
-- tasks: Max 8 words each. One physical action. Start with a verb. Examples: "Take 1 tablet with food", "Submit form by certified mail". If an action cannot fit in 8 words, split it into 2 tasks. NEVER a compound sentence.
-- warnings: Max 8 words each. Short facts only.
+FORMAT RULES:
+- key_items: 2-4 words each. Label only. Examples: "7-day course", "60-day deadline", "Two forms of ID". Never a sentence.
+- warnings: Max 8 words each. Short facts. No "Do not" prefix.
 - meaning: Max 12 words. One sentence.
+- {meaning_rule}
 """
     else:
         mode_instruction = f"""
