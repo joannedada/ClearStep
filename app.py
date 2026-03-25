@@ -584,7 +584,8 @@ def validate_response(parsed, mode):
         parsed["is_medical"] = bool(parsed.get("is_medical", False))
         if not parsed.get("tasks"):
             errors.append("tasks list is empty")
-        # No hard cap on tasks — frontend batches in groups of 10
+        # Task list has no hard count cap — frontend batches in groups of 5
+        # Per-item word limit (tasks: 10) is enforced by _trim_items above
         if len(parsed.get("warnings", [])) > 6:
             parsed["warnings"] = parsed["warnings"][:6]
         if len(parsed.get("key_items", [])) > 4:
@@ -703,7 +704,8 @@ def analyze():
         },
         json={
             "model": "claude-sonnet-4-20250514",
-            "max_tokens": 1000 if mode == "simple" else 500,
+            "max_tokens": 2000 if mode == "simple" else 500,
+            "temperature": 0,
             "messages": [{"role": "user", "content": prompt}]
         },
         timeout=30
