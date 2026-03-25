@@ -1149,7 +1149,7 @@ def upload_file():
             if "not configured" in err_msg:
                 return jsonify({"error": "Screenshot reading is not enabled yet."}), 400
             logger.warning("ClearStep ocr_extraction_failed", extra={"custom_dimensions": {"error": err_msg}})
-            return jsonify({"error": "Could not read text from this image. Please try a clearer image or copy the text directly."}), 400
+            return jsonify({"error": "Image upload is a planned feature. For the most reliable results, please paste text directly."}), 400
 
     elif ext == '.pdf':
         try:
