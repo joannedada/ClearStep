@@ -1018,10 +1018,8 @@ def extract_text_from_image(file_obj):
     if not image_bytes:
         raise ValueError("Image file is empty")
 
-    # Azure Vision Read API — synchronous for small images via analyzeImage
-    # Uses the 4.0 Florence-based endpoint
-    # NOTE: URL and response shape are provisional — validate once Vision resource is live
-    url = f"{AZURE_VISION_ENDPOINT.rstrip('/')}/computervision/imageanalysis:analyze?api-version=2023-02-01-preview&features=read"
+    # Azure AI Vision 4.0 Image Analysis — Foundry endpoint
+    url = f"{AZURE_VISION_ENDPOINT.rstrip('/')}/computervision/imageanalysis:analyze?api-version=2024-02-01&features=read"
     try:
         response = requests.post(
             url,
@@ -1034,12 +1032,12 @@ def extract_text_from_image(file_obj):
         )
         if response.status_code != 200:
             logger.warning("ClearStep ocr_api_failed", extra={
-                "custom_dimensions": {"status": str(response.status_code)}
+                "custom_dimensions": {"status": str(response.status_code), "body": response.text[:200]}
             })
             raise RuntimeError(f"OCR API returned {response.status_code}")
 
         result = response.json()
-        # Extract all lines of text from the response
+        # Azure Vision 4.0 response shape: result.readResult.blocks[].lines[].text
         lines = []
         read_result = result.get("readResult", {})
         for block in read_result.get("blocks", []):
