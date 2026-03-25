@@ -371,6 +371,7 @@ MEDICAL SAFEGUARD RULES — apply when is_medical is true:
 - Never invent, infer, or add any medical step not explicitly stated in the original message.
 - Never paraphrase dosing numbers, quantities, or timing. Copy them verbatim.
 - Every restriction, interaction warning, and timing rule must appear in warnings.
+- Conditional instructions ("if you miss a dose", "if it is almost time", "unless", "in case") are WARNINGS, never tasks. They describe exception scenarios, not regular actions.
 
 MANDATORY DISCLAIMER — always last in warnings when is_medical is true:
 - Always include this exact string as the final item in warnings:
@@ -596,7 +597,7 @@ def validate_response(parsed, mode):
         leaked = []
         for task in parsed.get("tasks", []):
             low = task.lower()
-            if low.startswith(("do not", "never ", "avoid ")):
+            if low.startswith(("do not", "never ", "avoid ", "skip ")):
                 leaked.append(task)
             else:
                 clean_tasks.append(task)
