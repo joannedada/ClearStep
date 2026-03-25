@@ -274,12 +274,22 @@ footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--bg3);disp
 .cal-btn-outlook{border-color:#0078D4;color:#0078D4;}
 .cal-btn-outlook:hover{background:#0078D4;color:#fff;border-color:#0078D4;}
 .reminder-error{font-size:0.75rem;color:var(--danger);padding:4px 0;}
+.upload-row{display:flex;align-items:center;gap:8px;margin:0.5rem 0 0.3rem;flex-wrap:wrap;}
+.upload-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid var(--bg3);border-radius:4px;background:transparent;font-size:0.75rem;font-family:var(--font-body);color:var(--muted);cursor:pointer;transition:all 0.2s;}
+.upload-btn:hover{border-color:var(--accent);color:var(--accent);}
+.upload-btn svg{width:14px;height:14px;fill:currentColor;}
+.upload-filename{font-size:0.72rem;color:var(--accent);font-family:var(--font-mono);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.upload-clear{background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:0 4px;}
+.upload-clear:hover{color:var(--danger);}
+.upload-notice{font-size:0.62rem;color:var(--muted);line-height:1.4;margin:0.2rem 0 0;max-width:95%;}
+.upload-error{font-size:0.78rem;color:var(--warn);padding:0.4rem 0;line-height:1.4;}
 .tts-btn{background:none;border:1px solid var(--bg3);border-radius:50%;width:28px;height:28px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;opacity:0.5;transition:opacity 0.2s,border-color 0.2s;vertical-align:middle;margin-left:6px;flex-shrink:0;padding:0;}
 .tts-btn:hover{opacity:0.8;border-color:var(--accent);}
 .tts-btn.playing{opacity:1;border-color:var(--accent);background:var(--bg2);}
 .tts-btn.tts-error{opacity:0.4;cursor:default;}
 .tts-btn svg{width:14px;height:14px;fill:var(--text);}
 .tts-row{display:flex;align-items:center;gap:4px;}
+.batch-notice{margin:0.75rem 1.4rem 0;padding:0.65rem 0.9rem;background:var(--bg);border:1px solid var(--bg3);border-radius:4px;border-left:2px solid var(--accent);font-size:0.78rem;color:var(--muted);line-height:1.55;}
 </style>
 </head>
 <body>
@@ -330,6 +340,14 @@ footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--bg3);disp
     <div class="input-card">
       <label class="input-label" id="inputLabel" for="msgInput">Paste the message you want to check</label>
       <textarea id="msgInput" placeholder="Paste anything here..."></textarea>
+      <div class="upload-row" id="uploadRow">
+        <button class="upload-btn" onclick="document.getElementById('fileInput').click();" title="Attach a file" aria-label="Attach a file"><svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6h-1v9.5c0 1.1.9 2 2 2s2-.9 2-2V5c0-1.93-1.57-3.5-3.5-3.5S7 3.07 7 5v12.5c0 2.76 2.24 5 5 5s5-2.24 5-5V6h-1.5z"/></svg>Attach file</button>
+        <input type="file" id="fileInput" accept=".txt,.pdf,.doc,.docx" style="display:none" onchange="handleFileSelect(this)" aria-label="Choose file to attach">
+        <span class="upload-filename" id="uploadFilename" style="display:none;" aria-live="polite"></span>
+        <button class="upload-clear" id="uploadClear" onclick="clearUpload()" style="display:none;" title="Remove file" aria-label="Remove attached file">✕</button>
+      </div>
+      <div class="upload-notice" id="uploadNotice">Uploads are screened before processing. No harmful, sexual, self-harm, violent, abusive, or hacking-related content.</div>
+      <div class="upload-error" id="uploadError" style="display:none;" role="alert"></div>
       <div class="input-footer">
         <div>
           <p class="chips-label">Try an example</p>
@@ -376,6 +394,7 @@ footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--bg3);disp
             <div class="tts-row"><div class="warn-label">⚠ Before you start</div><button class="tts-btn" id="ttsWarnings" onclick="ttsToggle('warnings')" style="display:none;" title="Read aloud"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg></button></div>
             <ul class="warn-list" id="warnList"></ul>
           </div>
+          <div id="batchNotice" class="batch-notice" style="display:none;">This document has many required actions. To keep things clear, ClearStep shows 10 priority steps at a time. Remaining steps will appear after the current set is completed.</div>
           <div class="simple-start">
             <button class="start-btn" onclick="startSteps()">Start with Step 1 →</button>
             <button class="see-all-btn" onclick="toggleAllSteps()">See all steps</button>
@@ -463,6 +482,14 @@ footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--bg3);disp
             <div class="complete-sub">Well done. Take a breath.</div>
           </div>
         </div>
+        <div id="simplePhase4" class="simple-phase" style="display:none;">
+          <div class="complete-view">
+            <div class="complete-icon" style="color:var(--accent);">✓</div>
+            <div class="complete-text" style="color:var(--accent);">Set complete.</div>
+            <div class="complete-sub">Good work. Ready for the next steps?</div>
+            <button class="start-btn" style="margin-top:1.2rem;" onclick="loadNextBatch()">Continue to next <span id="batchContinueCount">10</span> steps →</button>
+          </div>
+        </div>
         <div class="explain-panel" id="explainPanelSimple" style="border-top:1px solid var(--bg3);padding:0.9rem 1.4rem;">
           <button class="explain-toggle" id="explainToggleSimple" onclick="toggleExplainSimple()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
@@ -544,8 +571,10 @@ let currentMode=null,allTasks=[],shownTaskCount=0;
 let simpleBadgeOverride=null;
 const SIMPLE_BADGE_MAP=['MEDICAL','IMPORTANT','COMPLEX','COMPLEX'];
 const BATCH_SIZE=5;
+const TASK_BATCH_SIZE=10;
+let batchStart=0;
 let doneTaskIndices=[],currentIsMedical=false;
-function selectMode(mode){ttsStop();simpleBadgeOverride=null;currentMode=mode;document.getElementById('modeScreen').style.display='none';document.querySelector('.topbar-right').style.opacity='1';document.querySelector('.topbar-right').style.pointerEvents='';const appScreen=document.getElementById('appScreen');appScreen.classList.add('visible');if(mode==='safe'){document.getElementById('screenTitle').textContent='IS THIS SAFE?';document.getElementById('screenDesc').textContent='Paste a message or email. Get the risk and what to do next.';document.getElementById('msgInput').placeholder='Paste a message, email, or link — nothing is stored or shared.';document.getElementById('inputLabel').textContent='Paste the message you want to check';document.getElementById('analyzeBtn').textContent='CHECK MESSAGE';document.getElementById('loadingText').textContent='Checking your message...';renderSafeChips();}else{document.getElementById('screenTitle').textContent='MAKE IT SIMPLE';document.getElementById('screenDesc').textContent='Paste anything overwhelming. Get calm, clear steps — one at a time.';document.getElementById('msgInput').placeholder='Paste what feels overwhelming...';document.getElementById('inputLabel').textContent='Paste what feels overwhelming';document.getElementById('analyzeBtn').textContent='BREAK THIS DOWN';document.getElementById('loadingText').textContent='Breaking this down for you...';renderSimpleChips();}}
+function selectMode(mode){ttsStop();simpleBadgeOverride=null;clearUpload();currentMode=mode;document.getElementById('modeScreen').style.display='none';document.querySelector('.topbar-right').style.opacity='1';document.querySelector('.topbar-right').style.pointerEvents='';const appScreen=document.getElementById('appScreen');appScreen.classList.add('visible');if(mode==='safe'){document.getElementById('screenTitle').textContent='IS THIS SAFE?';document.getElementById('screenDesc').textContent='Paste a message or email. Get the risk and what to do next.';document.getElementById('msgInput').placeholder='Paste a message, email, or link — nothing is stored or shared.';document.getElementById('inputLabel').textContent='Paste the message you want to check';document.getElementById('analyzeBtn').textContent='CHECK MESSAGE';document.getElementById('loadingText').textContent='Checking your message...';renderSafeChips();}else{document.getElementById('screenTitle').textContent='MAKE IT SIMPLE';document.getElementById('screenDesc').textContent='Paste anything overwhelming. Get calm, clear steps — one at a time.';document.getElementById('msgInput').placeholder='Paste what feels overwhelming...';document.getElementById('inputLabel').textContent='Paste what feels overwhelming';document.getElementById('analyzeBtn').textContent='BREAK THIS DOWN';document.getElementById('loadingText').textContent='Breaking this down for you...';renderSimpleChips();}}
 function goBack(){simpleBadgeOverride=null;document.getElementById('modeScreen').style.display='block';const tb=document.querySelector('.topbar-right');tb.style.opacity='0';tb.style.transition='opacity 0.8s';tb.style.pointerEvents='none';setTimeout(()=>{if(!currentMode){tb.style.opacity='0.2';}},2000);const appScreen=document.getElementById('appScreen');appScreen.classList.remove('visible');appScreen.style.display='none';setTimeout(()=>{appScreen.style.display='';},10);resetAll();currentMode=null;}
 const safeExamples=[{label:'Bank scam',text:'Your bank account has been locked due to suspicious activity. Click here immediately to verify your identity or your account will be permanently closed within 24 hours.'},{label:'Family emergency scam',text:"Grandma it's me, I'm in jail and I need you to go to Walmart and buy $2000 in gift cards right now. Please don't tell Mom or Dad."},{label:'Suspicious link',text:"Hey, I found something you need to see. Click this link before it expires: bit.ly/xr9vcheck — let me know what you think."},{label:'Safe message',text:'Hi! Just a reminder that your dentist appointment is tomorrow at 2:30 PM. Reply CONFIRM to confirm or CANCEL to cancel.'}];
 const simpleExamples=[{label:'Medical instructions',text:'Take 1 tablet by mouth twice daily with food. Do not crush or chew. Avoid grapefruit juice. If you miss a dose, take it as soon as you remember unless it is almost time for your next dose, in which case skip the missed dose. Do not double up. Do not take with alcohol.'},{label:'Government form',text:'To appeal your benefits decision you must complete form SSA-561-U2, attach supporting medical documentation dated within the last 90 days, submit in person or by certified mail within 60 days of the notice date, include your Social Security number on all pages, and retain a copy for your records.'},{label:'Confusing work email',text:'Hi, per our earlier discussion please action the deliverables from the sync and loop in the relevant stakeholders before EOD to ensure alignment with the Q2 roadmap priorities.'},{label:'Complex instructions',text:'Complete the onboarding form, submit your I-9 with two forms of ID, enroll in benefits within 30 days, set up direct deposit, complete mandatory compliance training, and schedule your orientation with HR before your first day.'}];
@@ -577,12 +606,12 @@ const RL_FS={simple:'1.2rem',standard:'1.06rem',detailed:'1rem'};
 const RL_LH={simple:'2.0',standard:'1.75',detailed:'1.65'};
 function loadRL(){try{const s=localStorage.getItem('cs_rl');if(s){const b=document.querySelector(`[data-rl="${s}"]`);if(b)setRL(b);}}catch(e){}}
 let state={tasks:[],currentIndex:0,completed:[],showAll:false,done:false,reminderMins:null};
-function showPhase(n){[1,2,3].forEach(i=>{const el=document.getElementById('simplePhase'+i);if(el)el.style.display=i===n?'block':'none';});}
-function initTasks(tasks){state={tasks,currentIndex:0,completed:[],showAll:false,done:false,reminderMins:null};allTasks=tasks;showPhase(1);renderAllStepsLists();}
+function showPhase(n){[1,2,3,4].forEach(i=>{const el=document.getElementById('simplePhase'+i);if(el)el.style.display=i===n?'block':'none';});}
+function initTasks(tasks){allTasks=tasks;batchStart=0;const batch=allTasks.slice(0,TASK_BATCH_SIZE);state={tasks:batch,currentIndex:0,completed:[],showAll:false,done:false,reminderMins:null};const notice=document.getElementById('batchNotice');if(notice)notice.style.display=allTasks.length>TASK_BATCH_SIZE?'block':'none';showPhase(1);renderAllStepsLists();}
 function startSteps(){if(!state.tasks.length)return;showPhase(2);renderStep();}
 function renderStep(){if(state.done){showPhase(3);return;}const i=state.currentIndex;const total=state.tasks.length;const numCur=document.getElementById('stepNumCurrent');const numTot=document.getElementById('stepNumTotal');const fill=document.getElementById('stepProgressFill');if(numCur){numCur.style.opacity='0';setTimeout(()=>{numCur.textContent=(i+1);numCur.style.opacity='1';},150);}if(numTot)numTot.textContent=total;if(fill)fill.style.width=((i+1)/total*100)+'%';const task=document.getElementById('stepTask');if(task)task.textContent=state.tasks[i]||'';ttsStop();const sb=document.getElementById('ttsStep');if(sb)sb.style.display=state.tasks[i]?'inline-flex':'none';const markArea=document.getElementById('markDoneArea');const undoArea=document.getElementById('undoArea');if(markArea)markArea.style.display='block';if(undoArea)undoArea.style.display='none';resetReminderUI();renderDoneList();renderAllStepsLists();}
 function renderDoneList(){const wrap=document.getElementById('unifiedSteps');const list=document.getElementById('unifiedList');if(!list)return;if(state.tasks.length===0){if(wrap)wrap.style.display='none';return;}if(wrap)wrap.style.display='block';list.innerHTML='';if(state.completed.length>1){const undoAll=document.createElement('button');undoAll.className='undo-all-btn';undoAll.textContent='Undo all completed';undoAll.onclick=()=>undoAllSteps();list.appendChild(undoAll);}state.tasks.forEach((task,idx)=>{const done=state.completed.includes(idx);const isCurrent=idx===state.currentIndex&&!done;const li=document.createElement('li');li.className='unified-item'+(done?' unified-done':isCurrent?' unified-current':' unified-future');if(done){li.innerHTML=`<span class="u-check">✓</span><span class="u-text">${esc(task)}</span><button class="done-undo-btn" onclick="undoSpecificStep(${idx})">Undo</button>`;}else if(isCurrent){li.innerHTML=`<span class="u-num">${idx+1}</span><span class="u-text">${esc(task)}</span><span class="u-tag">Now</span>`;}else{li.innerHTML=`<span class="u-num">${idx+1}</span><span class="u-text">${esc(task)}</span>`;}list.appendChild(li);});}
-function markStepDone(){const i=state.currentIndex;state.completed.push(i);let next=-1;for(let j=0;j<state.tasks.length;j++){if(!state.completed.includes(j)){next=j;break;}}if(next===-1){state.done=true;showPhase(3);setTimeout(()=>toast('All steps complete. Well done.'),300);}else{state.currentIndex=next;renderStep();const undoArea=document.getElementById('undoArea');if(undoArea){undoArea.style.display='flex';document.getElementById('undoStepLabel').textContent='✓ Step '+(i+1)+' done';}}}
+function markStepDone(){const i=state.currentIndex;state.completed.push(i);let next=-1;for(let j=0;j<state.tasks.length;j++){if(!state.completed.includes(j)){next=j;break;}}if(next===-1){const nextBatchStart=batchStart+TASK_BATCH_SIZE;if(nextBatchStart<allTasks.length){const remaining=allTasks.length-nextBatchStart;const nextCount=Math.min(TASK_BATCH_SIZE,remaining);const el=document.getElementById('batchContinueCount');if(el)el.textContent=nextCount;showPhase(4);}else{state.done=true;showPhase(3);setTimeout(()=>toast('All steps complete. Well done.'),300);}}else{state.currentIndex=next;renderStep();const undoArea=document.getElementById('undoArea');if(undoArea){undoArea.style.display='flex';document.getElementById('undoStepLabel').textContent='✓ Step '+(i+1)+' done';}}}
 function undoStep(){if(state.completed.length===0)return;const last=state.completed.pop();state.currentIndex=last;state.done=false;renderStep();}
 function undoSpecificStep(idx){const pos=state.completed.indexOf(idx);if(pos===-1)return;state.completed=state.completed.slice(0,pos);state.currentIndex=idx;state.done=false;const undoArea=document.getElementById('undoArea');if(undoArea)undoArea.style.display='none';renderStep();}
 function undoAllSteps(){state.completed=[];state.currentIndex=0;state.done=false;const undoArea=document.getElementById('undoArea');if(undoArea)undoArea.style.display='none';renderStep();}
@@ -601,8 +630,9 @@ function cancelStepReminder(){state.reminderMins=null;const gBtn=document.getEle
 function changeReminder(){state.reminderMins=null;const preview=document.getElementById('reminderStepPreview');if(preview)preview.textContent=state.tasks[state.currentIndex]||'this step';setReminderUI('picker');}
 function setReminderUI(mode){const none=document.getElementById('reminderStateNone');const picker=document.getElementById('reminderStatePicker');const loading=document.getElementById('reminderStateLoading');const active=document.getElementById('reminderStateActive');if(none)none.style.display=mode==='none'?'flex':'none';if(picker)picker.style.display=mode==='picker'?'flex':'none';if(loading)loading.style.display=mode==='loading'?'flex':'none';if(active)active.style.display=mode==='active'?'flex':'none';}
 function resetReminderUI(){setReminderUI('none');}
-function resetTaskState(){state={tasks:[],currentIndex:0,completed:[],showAll:false,done:false,reminderMins:null};allTasks=[];shownTaskCount=0;doneTaskIndices=[];currentIsMedical=false;}
-function showNextBatch(){}
+function resetTaskState(){state={tasks:[],currentIndex:0,completed:[],showAll:false,done:false,reminderMins:null};allTasks=[];shownTaskCount=0;doneTaskIndices=[];currentIsMedical=false;batchStart=0;}
+function showNextBatch(){loadNextBatch();}
+function loadNextBatch(){batchStart+=TASK_BATCH_SIZE;const batch=allTasks.slice(batchStart,batchStart+TASK_BATCH_SIZE);state={tasks:batch,currentIndex:0,completed:[],showAll:false,done:false,reminderMins:null};ttsStop();showPhase(2);renderStep();}
 function renderExplain(risk,signals){const body=document.getElementById('explainBody');body.innerHTML='';const items=[];if(risk==='Safe'){items.push({type:'safe',text:'No pressure tactics, suspicious links, or unusual requests found.'});}else{(signals||[]).forEach(s=>{const lookup={'Urgent language':'Uses words like "immediately" to stop you thinking.','Threat language':'Threatens consequences to create fear.','Suspicious link':'Contains a link that may not go where it says.','Impersonation':'Pretends to be someone you know or trust.','Gift card request':'Gift card requests are always a scam.'};items.push({type:risk==='High Risk'?'flag':'info',text:lookup[s]||`"${s}" was identified in this message.`});});}items.push({type:'info',text:'ClearStep is an AI tool. Always verify with a professional if unsure.'});items.forEach(item=>{const div=document.createElement('div');div.className='explain-item';const iconChar=item.type==='flag'?'!':item.type==='safe'?'✓':'i';div.innerHTML=`<div class="ei">${iconChar}</div><span>${esc(item.text)}</span>`;body.appendChild(div);});}
 function toggleExplain(){const btn=document.getElementById('explainToggle');const body=document.getElementById('explainBody');const open=body.classList.contains('open');body.classList.toggle('open',!open);btn.classList.toggle('open',!open);}
 function toggleExplainSimple(){const body=document.getElementById('explainBodySimple');const chev=document.getElementById('explainChevronSimple');const open=body.style.display!=='none';body.style.display=open?'none':'block';if(chev)chev.style.transform=open?'':'rotate(180deg)';}
@@ -614,10 +644,7 @@ const API_URL='/api/analyze';
 async function analyze(){ttsStop();const msg=document.getElementById('msgInput').value.trim();if(!msg){showError('Please paste something to check.');return;}document.getElementById('resultCard').classList.remove('visible');document.getElementById('errorMsg').classList.remove('visible');document.getElementById('resetBtn').classList.remove('visible');document.getElementById('loading').classList.add('visible');document.getElementById('analyzeBtn').disabled=true;document.getElementById('explainBody').classList.remove('open');document.getElementById('explainToggle').classList.remove('open');try{const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,reading_level:curRL,mode:currentMode})});if(!res.ok)throw new Error('API error '+res.status);const data=await res.json();if(simpleBadgeOverride&&currentMode==='simple')data.badge_label=simpleBadgeOverride;renderResult(data);}catch(e){renderResult(fallback(msg));}finally{document.getElementById('loading').classList.remove('visible');document.getElementById('analyzeBtn').disabled=false;}}
 function fallback(msg){const m=msg.toLowerCase();let score=0;if(m.match(/urgent|immediately|right now|24 hour/))score+=3;if(m.match(/click|http|bit\.ly|verify/))score+=2;if(m.match(/gift card|bitcoin|wire transfer/))score+=4;const isMed=!!(m.match(/tablet|dose|medication|mg|prescription|pharmacist|swallow|daily|twice/));if(currentMode==='simple'){return{risk_level:'Caution',is_medical:isMed,_fallback:true,meaning:'This message has several things that need attention.',warnings:isMed?['Reminder tool only — always follow your original prescription']:[],key_items:['Multiple items detected','Review carefully'],tasks:['Start with the first action only','Check the original document for full details']};}if(score>=5)return{risk_level:'High Risk',_fallback:true,meaning:'This message shows several warning signs.',signals:['Urgent language','Suspicious request'],next_steps:['Do not click any links','Contact the organisation directly']};if(score>=2)return{risk_level:'Caution',_fallback:true,meaning:'Parts of this message are worth checking.',signals:['Unusual phrasing','Action request'],next_steps:['Pause before clicking anything','Verify through an official channel']};return{risk_level:'Safe',_fallback:true,meaning:'This message looks routine with no obvious warning signs.',signals:['No suspicious signals'],next_steps:['No urgent action needed']};}
 function showError(msg){const el=document.getElementById('errorMsg');el.textContent=msg;el.classList.add('visible');document.getElementById('loading').classList.remove('visible');}
-function resetAll(){simpleBadgeOverride=null;ttsHideAll();document.getElementById('msgInput').value='';document.getElementById('resultCard').classList.remove('visible');document.getElementById('errorMsg').classList.remove('visible');document.getElementById('resetBtn').classList.remove('visible');const fa=document.getElementById('feedbackAfter');if(fa){fa.style.display='none';}document.getElementById('fbY').className='fb-btn';document.getElementById('fbN').className='fb-btn';document.getElementById('fbThanks').classList.remove('show');document.getElementById('msgInput').focus();const medBar=document.getElementById('medicalDisclaimerBar');if(medBar)medBar.classList.remove('visible');const fbBarR=document.getElementById('fallbackBar');if(fbBarR)fbBarR.classList.remove('visible');resetTaskState();}
-const calmPhrases=['Take a moment. You are in control.','No rush. You have time.','Breathe. Then decide.','Whenever you are ready.','You have got this. Take your time.'];
-let calmIdx=0;
-function calmToast(){const t=document.getElementById('toast');t.textContent=calmPhrases[calmIdx%calmPhrases.length];calmIdx++;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),9000);}
+function resetAll(){simpleBadgeOverride=null;ttsHideAll();clearUpload();document.getElementById('msgInput').value='';document.getElementById('resultCard').classList.remove('visible');document.getElementById('errorMsg').classList.remove('visible');document.getElementById('resetBtn').classList.remove('visible');const fa=document.getElementById('feedbackAfter');if(fa){fa.style.display='none';}document.getElementById('fbY').className='fb-btn';document.getElementById('fbN').className='fb-btn';document.getElementById('fbThanks').classList.remove('show');document.getElementById('msgInput').focus();const medBar=document.getElementById('medicalDisclaimerBar');if(medBar)medBar.classList.remove('visible');const fbBarR=document.getElementById('fallbackBar');if(fbBarR)fbBarR.classList.remove('visible');resetTaskState();}
 function playBeep(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.connect(gain);gain.connect(ctx.destination);osc.type='sine';osc.frequency.value=520;gain.gain.setValueAtTime(0.4,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+1.2);osc.start(ctx.currentTime);osc.stop(ctx.currentTime+1.2);}catch(e){}if(navigator.vibrate)navigator.vibrate([300,100,300]);}
 function feedback(helpful){document.getElementById('fbY').className='fb-btn'+(helpful?' yes':'');document.getElementById('fbN').className='fb-btn'+(!helpful?' no':'');const thanks=document.getElementById('fbThanks');thanks.textContent=helpful?'Glad it helped.':'Thanks — we will use this to improve.';thanks.classList.add('show');try{const d=JSON.parse(localStorage.getItem('cs_fb')||'{"y":0,"n":0}');if(helpful)d.y++;else d.n++;localStorage.setItem('cs_fb',JSON.stringify(d));}catch(e){}}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),9000);}
@@ -637,6 +664,62 @@ const tb=document.querySelector('.topbar-right');tb.style.opacity='0';tb.style.t
 loadPreferences();
 buildProfGrid();
 renderWizStep();
+// ── File Upload — attachment handling ────────────────────
+let uploadedFile=null;
+function handleFileSelect(input){
+  const file=input.files[0];
+  if(!file){clearUpload();return;}
+  const errEl=document.getElementById('uploadError');
+  errEl.style.display='none';
+  // Client-side pre-checks (server enforces too)
+  const ext='.'+file.name.split('.').pop().toLowerCase();
+  const blocked=['.js','.py','.sh','.ps1','.bat','.cmd','.exe','.dll','.scr','.jar','.msi','.apk','.zip','.rar','.7z','.tar','.gz','.iso','.html','.svg','.xml'];
+  if(blocked.includes(ext)){showUploadError('This file type is not allowed.');input.value='';return;}
+  const allowed=['.txt','.pdf','.doc','.docx'];
+  if(!allowed.includes(ext)){showUploadError('Supported files: .txt, .pdf, .doc, .docx');input.value='';return;}
+  if(file.size>5*1024*1024){showUploadError('File too large. Maximum size is 5 MB.');input.value='';return;}
+  uploadedFile=file;
+  document.getElementById('uploadFilename').textContent=file.name;
+  document.getElementById('uploadFilename').style.display='inline';
+  document.getElementById('uploadClear').style.display='inline';
+  uploadFile(file);
+}
+function clearUpload(){
+  uploadedFile=null;
+  const input=document.getElementById('fileInput');
+  if(input)input.value='';
+  document.getElementById('uploadFilename').style.display='none';
+  document.getElementById('uploadClear').style.display='none';
+  document.getElementById('uploadError').style.display='none';
+}
+function showUploadError(msg){
+  const el=document.getElementById('uploadError');
+  el.textContent=msg;el.style.display='block';
+  setTimeout(()=>{el.style.display='none';},8000);
+}
+async function uploadFile(file){
+  const form=new FormData();
+  form.append('file',file);
+  const errEl=document.getElementById('uploadError');
+  errEl.style.display='none';
+  try{
+    const res=await fetch('/api/upload',{method:'POST',body:form});
+    const data=await res.json();
+    if(!res.ok){
+      showUploadError(data.error||'Upload failed.');
+      clearUpload();
+      return;
+    }
+    // Put extracted text in textarea
+    document.getElementById('msgInput').value=data.text;
+    simpleBadgeOverride=null;
+    document.getElementById('msgInput').focus();
+  }catch(e){
+    showUploadError('Could not upload file. Please try again.');
+    clearUpload();
+  }
+}
+
 // ── Text-to-Speech — optional read-aloud ────────────────
 let ttsAudio=null;let ttsPlaying=null;let currentLang='en';let currentResultData=null;
 const TTS_ICON='<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>';
