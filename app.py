@@ -55,6 +55,8 @@ COSMOS_DB_NAME = os.getenv("COSMOS_DB_NAME", "clearstep")
 COSMOS_CONTAINER_NAME = os.getenv("COSMOS_CONTAINER_NAME", "user_preferences")
 AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY")
 AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION")
+AZURE_VISION_ENDPOINT = os.getenv("AZURE_VISION_ENDPOINT")
+AZURE_VISION_KEY = os.getenv("AZURE_VISION_KEY")
 
 try:
     vault_url = "https://keyvault-clearstep.vault.azure.net/"
@@ -84,6 +86,11 @@ try:
         AZURE_SPEECH_REGION = secret_client.get_secret("AZURE-SPEECH-REGION").value
     except Exception:
         print("Speech secrets not in Key Vault — using env vars")
+    try:
+        AZURE_VISION_ENDPOINT = secret_client.get_secret("AZURE-VISION-ENDPOINT").value
+        AZURE_VISION_KEY = secret_client.get_secret("AZURE-VISION-KEY").value
+    except Exception:
+        print("Vision secrets not in Key Vault — using env vars")
     print("Secrets loaded successfully from Key Vault.")
 except Exception as e:
     print(f"Key Vault unavailable, using environment variables: {e}")
@@ -829,13 +836,13 @@ def calendar_link():
 
 # ── File Upload — attachment processing ─────────────────
 # Extracts text from uploaded files for analysis.
-# Only .txt is currently supported for extraction.
-# .pdf/.doc/.docx accepted in UI but rejected with a clear "not yet supported" message.
+# Supported extraction: .txt, .pdf, .docx, .png, .jpg, .jpeg
+# .doc is accepted but rejected with a message asking the user to save as .docx.
 # All extracted text is screened before returning to the frontend.
 import re
 from werkzeug.utils import secure_filename
 
-ALLOWED_EXTENSIONS = {'.txt', '.pdf', '.doc', '.docx'}
+ALLOWED_EXTENSIONS = {'.txt', '.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg'}
 BLOCKED_EXTENSIONS = {'.js', '.py', '.sh', '.ps1', '.bat', '.cmd', '.exe', '.dll',
     '.scr', '.jar', '.msi', '.apk', '.zip', '.rar', '.7z', '.tar', '.gz',
     '.iso', '.html', '.svg', '.xml', '.php', '.rb', '.pl', '.vbs', '.wsf'}
@@ -915,6 +922,59 @@ def screen_upload_content(text):
     return {"blocked": False}
 
 
+def extract_text_from_image(file_obj):
+    """Extract text from an image using Azure Computer Vision OCR (Read API).
+
+    NOTE: The endpoint URL and response shape below are provisional and must be
+    validated once the Azure Vision resource is live. The API version and
+    readResult block structure should be confirmed against the actual resource.
+    """
+    if not AZURE_VISION_ENDPOINT or not AZURE_VISION_KEY:
+        raise RuntimeError("Azure Vision OCR is not configured")
+
+    # Read the raw image bytes
+    image_bytes = file_obj.read()
+    if not image_bytes:
+        raise ValueError("Image file is empty")
+
+    # Azure Vision Read API — synchronous for small images via analyzeImage
+    # Uses the 4.0 Florence-based endpoint
+    # NOTE: URL and response shape are provisional — validate once Vision resource is live
+    url = f"{AZURE_VISION_ENDPOINT.rstrip('/')}/computervision/imageanalysis:analyze?api-version=2023-02-01-preview&features=read"
+    try:
+        response = requests.post(
+            url,
+            headers={
+                "Ocp-Apim-Subscription-Key": AZURE_VISION_KEY,
+                "Content-Type": "application/octet-stream"
+            },
+            data=image_bytes,
+            timeout=20
+        )
+        if response.status_code != 200:
+            logger.warning("ClearStep ocr_api_failed", extra={
+                "custom_dimensions": {"status": str(response.status_code)}
+            })
+            raise RuntimeError(f"OCR API returned {response.status_code}")
+
+        result = response.json()
+        # Extract all lines of text from the response
+        lines = []
+        read_result = result.get("readResult", {})
+        for block in read_result.get("blocks", []):
+            for line in block.get("lines", []):
+                line_text = line.get("text", "").strip()
+                if line_text:
+                    lines.append(line_text)
+
+        return "\n".join(lines)
+
+    except requests.exceptions.Timeout:
+        raise RuntimeError("OCR request timed out")
+    except Exception as e:
+        raise RuntimeError(str(e))
+
+
 @app.route("/api/upload", methods=["POST"])
 @limiter.limit("5 per minute")
 def upload_file():
@@ -935,7 +995,7 @@ def upload_file():
     if ext in BLOCKED_EXTENSIONS:
         return jsonify({"error": "This file type is not allowed."}), 400
     if ext not in ALLOWED_EXTENSIONS:
-        return jsonify({"error": "Unsupported file type. Allowed: .txt, .pdf, .doc, .docx"}), 400
+        return jsonify({"error": "Unsupported file type. Allowed: .txt, .pdf, .doc, .docx, .png, .jpg, .jpeg"}), 400
 
     # Check size
     file.seek(0, 2)
@@ -952,7 +1012,10 @@ def upload_file():
         '.txt':  {'text/plain'},
         '.pdf':  {'application/pdf'},
         '.doc':  {'application/msword'},
-        '.docx': {'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}
+        '.docx': {'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},
+        '.png':  {'image/png'},
+        '.jpg':  {'image/jpeg'},
+        '.jpeg': {'image/jpeg'},
     }
 
     expected_mimes = allowed_mimes.get(ext)
@@ -968,26 +1031,63 @@ def upload_file():
         if content_type not in expected_mimes:
             return jsonify({"error": "File type does not match its extension."}), 400
 
-    # Reject unsupported extraction types with a calm, honest message
-    if ext in {'.pdf', '.doc', '.docx'}:
-        logger.info("ClearStep upload_attempted", extra={
-            "custom_dimensions": {"extension": ext, "status": "unsupported_extraction"}
-        })
+    # .doc — old binary format, not supported; ask user to resave as .docx
+    if ext == '.doc':
         return jsonify({
-            "error": "Document upload for this file type is not enabled yet. Please copy and paste the text directly.",
+            "error": "Old .doc files cannot be read directly. Please open the file, save it as .docx, and try again.",
             "unsupported": True
         }), 400
 
-    # Read .txt content
-    try:
-        raw = file.read()
+    # Extract text based on file type
+    text = ""
+
+    if ext in {'.png', '.jpg', '.jpeg'}:
         try:
-            text = raw.decode('utf-8')
-        except UnicodeDecodeError:
-            text = raw.decode('latin-1')
-        text = text.strip()
-    except Exception:
-        return jsonify({"error": "Could not read this file."}), 400
+            text = extract_text_from_image(file)
+            text = text.strip()
+        except RuntimeError as e:
+            err_msg = str(e)
+            if "not configured" in err_msg:
+                return jsonify({"error": "Screenshot reading is not enabled yet."}), 400
+            logger.warning("ClearStep ocr_extraction_failed", extra={"custom_dimensions": {"error": err_msg}})
+            return jsonify({"error": "Could not read text from this image. Please try a clearer image or copy the text directly."}), 400
+
+    elif ext == '.pdf':
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(file)
+            if reader.is_encrypted:
+                return jsonify({"error": "This PDF is password-protected. Please remove the password and try again."}), 400
+            pages = []
+            for page in reader.pages:
+                page_text = page.extract_text() or ""
+                pages.append(page_text)
+            text = "\n".join(pages).strip()
+        except Exception as e:
+            logger.warning("ClearStep pdf_extraction_failed", extra={"custom_dimensions": {"error": str(e)}})
+            return jsonify({"error": "Could not read this PDF. It may be image-only or corrupted. Please try copying the text directly."}), 400
+
+    elif ext == '.docx':
+        try:
+            import docx
+            doc = docx.Document(file)
+            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+            text = "\n".join(paragraphs).strip()
+        except Exception as e:
+            logger.warning("ClearStep docx_extraction_failed", extra={"custom_dimensions": {"error": str(e)}})
+            return jsonify({"error": "Could not read this Word document. It may be corrupted or in an unsupported format."}), 400
+
+    else:
+        # .txt
+        try:
+            raw = file.read()
+            try:
+                text = raw.decode('utf-8')
+            except UnicodeDecodeError:
+                text = raw.decode('latin-1')
+            text = text.strip()
+        except Exception:
+            return jsonify({"error": "Could not read this file."}), 400
 
     if not text:
         return jsonify({"error": "File appears to be empty."}), 400
