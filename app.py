@@ -342,17 +342,25 @@ You are breaking down a complex message into the clearest possible structure for
 FIRST: Detect if this message contains medical instructions, medication directions, or health advice.
 Set "is_medical": true if yes, false if no.
 
-CRITICAL EXTRACTION RULE:
-Extract ONLY the actual steps and actions that appear in the message.
-NEVER invent general advice, time-management tips, or meta-instructions like "Choose most important tasks", "Write them on paper", or "Take breaks".
-If the message contains a list of steps, those steps ARE the tasks — extract them directly.
-If the message contains instructions, those instructions ARE the tasks — follow them exactly.
+CRITICAL EXTRACTION RULE — this is the most important rule:
+Your job is to EXTRACT, not summarise.
+Every task that appears in the message must become a task in your output.
+If the message contains 20 items, you return 20 tasks.
+If the message contains 50 items, you return 50 tasks.
+NEVER condense multiple tasks into one.
+NEVER replace real tasks with meta-advice like "Pick the most urgent tasks", "Start with one task", or "Focus on today only".
+NEVER comment on the length of the list or suggest the user do fewer tasks.
+The user knows how many tasks they have. Your job is to organise them clearly, not to filter them.
 
-STRICT SEPARATION RULES — read carefully:
+WARNINGS rule — warnings come ONLY from the document:
+WARNINGS = things the person must NEVER do, or explicit safety rules stated in the message.
+NEVER add warnings that are your own opinion about the task list.
+NEVER add warnings like "Very long list may cause overwhelm" or "Consider doing fewer tasks" — these are not in the document.
+If the message contains no warnings or safety rules, warnings must be an empty array.
 
-WARNINGS = things the person must NEVER do, or safety rules.
+STRICT SEPARATION RULES:
 TASKS = physical actions the person needs to DO, in the order they do them.
-A task starts with an action verb: Take, Call, Submit, Sign, Go, Set, Open, Write.
+A task starts with an action verb: Take, Call, Submit, Sign, Go, Set, Open, Write, Buy, Clean, Pay, Reply, Schedule.
 "Do not" is NEVER a task.
 
 TASK ORDER RULES:
