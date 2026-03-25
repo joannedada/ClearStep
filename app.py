@@ -563,8 +563,7 @@ def validate_response(parsed, mode):
         parsed["is_medical"] = bool(parsed.get("is_medical", False))
         if not parsed.get("tasks"):
             errors.append("tasks list is empty")
-        if len(parsed.get("tasks", [])) > 10:
-            parsed["tasks"] = parsed["tasks"][:10]
+        # No hard cap on tasks — frontend batches in groups of 10
         if len(parsed.get("warnings", [])) > 6:
             parsed["warnings"] = parsed["warnings"][:6]
         if len(parsed.get("key_items", [])) > 4:
@@ -662,7 +661,7 @@ def analyze():
             "next_steps": ["Ignore this message", "Do not act on it"]
         })
 
-    # ── NEW: Language detection ──────────────────────────
+    # ── Language detection ──────────────────────────
     lang_result = detect_language(msg)
     detected_language = lang_result["language"]
 
@@ -708,7 +707,7 @@ def analyze():
 
     store_result_to_blob(validated)
 
-    # ── NEW: Richer App Insights telemetry ───────────────
+    # ── Richer App Insights telemetry ───────────────
     if mode == "simple":
         logger.info("ClearStep task_decomposed", extra={
             "custom_dimensions": {
@@ -827,6 +826,191 @@ def calendar_link():
         "event_title": f"ClearStep reminder: {step_text}",
         "event_start": start.strftime("%Y-%m-%dT%H:%M:%S")
     })
+
+# ── File Upload — attachment processing ─────────────────
+# Extracts text from uploaded files for analysis.
+# Only .txt is currently supported for extraction.
+# .pdf/.doc/.docx accepted in UI but rejected with a clear "not yet supported" message.
+# All extracted text is screened before returning to the frontend.
+import re
+from werkzeug.utils import secure_filename
+
+ALLOWED_EXTENSIONS = {'.txt', '.pdf', '.doc', '.docx'}
+BLOCKED_EXTENSIONS = {'.js', '.py', '.sh', '.ps1', '.bat', '.cmd', '.exe', '.dll',
+    '.scr', '.jar', '.msi', '.apk', '.zip', '.rar', '.7z', '.tar', '.gz',
+    '.iso', '.html', '.svg', '.xml', '.php', '.rb', '.pl', '.vbs', '.wsf'}
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MB
+
+CYBER_BLOCK_PATTERNS = re.compile(
+    r'(?i)('
+    r'reverse.?shell|bind.?shell|netcat\s+\-[el]|nc\s+\-[el]|'
+    r'msfvenom|metasploit|payload|shellcode|exploit\s+code|'
+    r'sql.?inject|xss.?payload|csrf.?token.?steal|'
+    r'keylog|credential.?dump|mimikatz|hashcat|john.?the.?ripper|'
+    r'phishing.?kit|spoof.?email|social.?engineer.?attack|'
+    r'privilege.?escalat|lateral.?movement|persistence.?mechanism|'
+    r'ransomware|cryptolock|encrypt.?files.?demand|'
+    r'data.?exfiltrat|steal.?credentials|dump.?password|'
+    r'bypass.?firewall|evade.?detection|disable.?antivirus|'
+    r'brute.?force.?attack|ddos.?attack|botnet|'
+    r'trojan|rootkit|backdoor.?install|rat.?server|'
+    r'#!/bin/(?:ba)?sh|import\s+subprocess|exec\s*\(|eval\s*\(|'
+    r'os\.system\s*\(|subprocess\.(?:run|call|Popen)|'
+    r'powershell\s+\-enc|\-nop\s+\-w\s+hidden'
+    r')'
+)
+
+def screen_upload_content(text):
+    """Screen extracted text for harmful content before returning to frontend.
+
+    Truncate first; all downstream checks operate on bounded content.
+    Azure API screening (Content Safety, Prompt Shield) is limited to the first
+    1000 chars for latency and cost reasons. Cyber regex runs the full 5000 chars.
+    """
+    bounded = text[:5000]
+
+    # Content Safety — inline check so all categories are acted on, not just crisis
+    if all([AZURE_CONTENT_SAFETY_ENDPOINT, AZURE_CONTENT_SAFETY_KEY]):
+        cs_url = f"{AZURE_CONTENT_SAFETY_ENDPOINT}/contentsafety/text:analyze?api-version=2023-10-01"
+        try:
+            cs_response = requests.post(
+                cs_url,
+                headers={
+                    "Content-Type": "application/json",
+                    "Ocp-Apim-Subscription-Key": AZURE_CONTENT_SAFETY_KEY
+                },
+                json={
+                    "text": bounded[:1000],
+                    "categories": ["Hate", "SelfHarm", "Sexual", "Violence"],
+                    "outputType": "FourSeverityLevels"
+                },
+                timeout=10
+            )
+            if cs_response.status_code == 200:
+                for cat in cs_response.json().get("categoriesAnalysis", []):
+                    category = cat.get("category")
+                    severity = cat.get("severity", 0)
+                    if category == "SelfHarm" and severity >= 4:
+                        logger.warning("ClearStep upload_blocked_crisis", extra={
+                            "custom_dimensions": {"category": "SelfHarm", "severity": str(severity)}
+                        })
+                        return {"blocked": True, "reason": "This file contains content that may need immediate support. If you are in crisis, please call or text 988."}
+                    if category in ("Sexual", "Violence", "Hate") and severity >= 2:
+                        logger.warning("ClearStep upload_blocked_harmful", extra={
+                            "custom_dimensions": {"category": category, "severity": str(severity)}
+                        })
+                        return {"blocked": True, "reason": "This file contains content that cannot be processed by ClearStep."}
+        except Exception as e:
+            logger.warning("Upload content safety check failed", extra={"custom_dimensions": {"error": str(e)}})
+
+    # Prompt Shield screening — same bounded content, API-limited to 1000 chars
+    shield = screen_prompt_shield(bounded[:1000])
+    if shield.get("attack_detected"):
+        return {"blocked": True, "reason": "This file contains content that cannot be processed safely."}
+
+    # Cyber/malware keyword screening — full 5000 chars
+    if CYBER_BLOCK_PATTERNS.search(bounded):
+        return {"blocked": True, "reason": "This file contains content related to cybersecurity exploitation that ClearStep cannot assist with."}
+
+    return {"blocked": False}
+
+
+@app.route("/api/upload", methods=["POST"])
+@limiter.limit("5 per minute")
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({"error": "No file selected"}), 400
+
+    # Sanitize filename
+    safe_name = secure_filename(file.filename)
+    if not safe_name:
+        return jsonify({"error": "Invalid filename"}), 400
+
+    # Check extension
+    ext = os.path.splitext(safe_name)[1].lower()
+    if ext in BLOCKED_EXTENSIONS:
+        return jsonify({"error": "This file type is not allowed."}), 400
+    if ext not in ALLOWED_EXTENSIONS:
+        return jsonify({"error": "Unsupported file type. Allowed: .txt, .pdf, .doc, .docx"}), 400
+
+    # Check size
+    file.seek(0, 2)
+    size = file.tell()
+    file.seek(0)
+    if size > MAX_UPLOAD_SIZE:
+        return jsonify({"error": "File too large. Maximum size is 5 MB."}), 400
+    if size == 0:
+        return jsonify({"error": "File is empty."}), 400
+
+    # Check MIME type — per-extension lookup, no bypass for any type
+    content_type = (file.content_type or '').lower().strip()
+    allowed_mimes = {
+        '.txt':  {'text/plain'},
+        '.pdf':  {'application/pdf'},
+        '.doc':  {'application/msword'},
+        '.docx': {'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}
+    }
+
+    expected_mimes = allowed_mimes.get(ext)
+    if not expected_mimes:
+        return jsonify({"error": "File type not allowed."}), 400
+
+    # .txt can occasionally arrive with an empty content-type from some browsers;
+    # allow empty OR any text/* subtype, but reject clear mismatches.
+    if ext == '.txt':
+        if content_type and content_type not in expected_mimes and not content_type.startswith('text/'):
+            return jsonify({"error": "File type does not match its extension."}), 400
+    else:
+        if content_type not in expected_mimes:
+            return jsonify({"error": "File type does not match its extension."}), 400
+
+    # Reject unsupported extraction types with a calm, honest message
+    if ext in {'.pdf', '.doc', '.docx'}:
+        logger.info("ClearStep upload_attempted", extra={
+            "custom_dimensions": {"extension": ext, "status": "unsupported_extraction"}
+        })
+        return jsonify({
+            "error": "Document upload for this file type is not enabled yet. Please copy and paste the text directly.",
+            "unsupported": True
+        }), 400
+
+    # Read .txt content
+    try:
+        raw = file.read()
+        try:
+            text = raw.decode('utf-8')
+        except UnicodeDecodeError:
+            text = raw.decode('latin-1')
+        text = text.strip()
+    except Exception:
+        return jsonify({"error": "Could not read this file."}), 400
+
+    if not text:
+        return jsonify({"error": "File appears to be empty."}), 400
+
+    # Screen content before returning
+    screen = screen_upload_content(text)
+    if screen["blocked"]:
+        logger.warning("ClearStep upload_blocked", extra={
+            "custom_dimensions": {"extension": ext, "reason_type": "content_screening"}
+        })
+        return jsonify({"error": screen["reason"]}), 400
+
+    # Truncate to max analysis length (screening already bounded to 5000)
+    max_len = 5000
+    if len(text) > max_len:
+        text = text[:max_len]
+
+    logger.info("ClearStep upload_processed", extra={
+        "custom_dimensions": {"extension": ext, "text_length": str(len(text))}
+    })
+
+    return jsonify({"text": text, "filename": safe_name})
+
 
 # ── Azure AI Speech — Text-to-Speech ────────────────────
 # Converts visible result text to MP3 audio on demand.
