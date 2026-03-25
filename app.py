@@ -347,11 +347,10 @@ ROUTINE TASK: A single physical action performed at a specific moment. One actio
   Examples: "Take 1 tablet with food", "Submit form by certified mail", "Call your doctor"
 
 FREQUENCY RULE: How often a routine task repeats ("twice daily", "every 8 hours", "three times a day").
-  Frequency is NEVER a separate task. Frequency is NEVER appended text in a task. Frequency is NEVER optional.
-  Frequency ALWAYS determines how many task instances exist.
-  → "twice daily" → create exactly 2 task instances
-  → "three times daily" → create exactly 3 task instances
-  Each instance must contain the same core action, include execution context (e.g. "with food"), and include a simple time label if appropriate.
+  Frequency determines task instances ONLY when it can be mapped to clear, natural time labels without changing meaning.
+  → "twice daily" → 2 instances: morning / evening
+  → "three times daily" → 3 instances: morning / afternoon / evening
+  Each instance must contain the same core action, include execution context (e.g. "with food"), and include a simple time label.
 
   EXAMPLE (MANDATORY BEHAVIOR):
   Source: "Take 1 tablet three times daily with food for 7 days"
@@ -361,8 +360,12 @@ FREQUENCY RULE: How often a routine task repeats ("twice daily", "every 8 hours"
   RIGHT: ["Take 1 tablet with food — morning", "Take 1 tablet with food — afternoon", "Take 1 tablet with food — evening"]
   key_items: ["7-day course"]
 
-  EXCEPTION: If frequency cannot be safely mapped to clear time labels (e.g. "every 6 hours", "as needed"):
+  EXCEPTION: If frequency cannot be safely mapped to clear time labels (e.g. "every 6 hours", "every 8 hours", "as needed", "before meals", "at bedtime"):
   → Do NOT create artificial labels. Keep a single task. Move timing into key_items.
+  Example:
+  Source: "Take 1 tablet every 6 hours with food"
+  tasks: ["Take 1 tablet with food"]
+  key_items: ["Every 6 hours"]
 
   EXECUTION CONTEXT IS NOT A SECOND ACTION:
   "Take 1 tablet with food" = ONE task. "with food" is context, not a second action.
@@ -393,7 +396,7 @@ TASK STRUCTURE — this app is for neurodivergent users. One action per step is 
 - ONE physical action per task. One moment in time. No "and" between two actions.
 - If a task contains "and" followed by a second action, split it into two tasks.
 - If a task contains a time qualifier ("in the morning", "before bed"), embed it naturally — do not append it as a second clause.
-- Max 8 words per task. If the action cannot be described in 8 words, split it — never truncate.
+- Keep tasks under 8 words when possible. If a task is too long: simplify wording first. Only split if it contains multiple distinct actions. Never split a single clear action just to meet word count.
 - Start every task with an action verb: Take, Call, Submit, Sign, Go, Open, Write, Pay, Reply, Schedule, Gather.
 
 WARNINGS rule — warnings come ONLY from the document:
@@ -616,7 +619,7 @@ def validate_response(parsed, mode, reading_level="standard"):
         if not parsed.get("tasks"):
             errors.append("tasks list is empty")
         # Task list has no hard count cap — frontend batches in groups of 5
-        # Per-item word limit (tasks: 10) is enforced by _trim_items above
+        # Per-item word limit (tasks: 8) is enforced by _trim_items above
         if len(parsed.get("warnings", [])) > 6:
             parsed["warnings"] = parsed["warnings"][:6]
         if len(parsed.get("key_items", [])) > 4:
@@ -627,7 +630,13 @@ def validate_response(parsed, mode, reading_level="standard"):
         leaked = []
         for task in parsed.get("tasks", []):
             low = task.lower()
-            if low.startswith(("do not", "never ", "avoid ", "skip ")):
+            leaked_patterns = (
+                "do not", "never ", "avoid ", "skip ",
+                "use only", "only use", "without ", "unless ",
+                "do not use", "make sure", "ensure ", "check that",
+                "be careful", "warning:", "caution:"
+            )
+            if low.startswith(leaked_patterns):
                 leaked.append(task)
             else:
                 clean_tasks.append(task)
