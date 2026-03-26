@@ -128,6 +128,14 @@ Full architecture and request flow diagrams: [`docs/ARCHITECTURE.md`](./docs/ARC
 
 ---
 
+## Architecture Overview
+
+![ClearStep AI Pipeline](./docs/pipeline_preview.png)
+
+**[→ Open interactive pipeline explorer](./docs/clearstep_pipeline.html)** — click any layer to see exactly how it works, what it enforces, and why it was built that way.
+
+---
+
 ## Azure Services — 11 Services + Microsoft Foundry
 
 ClearStep uses 11 Azure services and Microsoft Foundry. Each was chosen for a specific reason, not to pad a list.
@@ -295,7 +303,7 @@ These decisions were made to prioritise reliable real-time interaction, clear us
 | Name | Role |
 |---|---|
 | **Leishka Pagan** | Project lead · Product strategy · System architecture · Backend development (`app.py`) · Frontend development (`index.html`) · Azure integrations · Prompt engineering · Medical safety design · UX design · Accessibility design · Security pen testing (14 attack vectors) · Responsible AI design · Full technical documentation (README, ARCHITECTURE, RESPONSIBLE_AI, AZURE_SERVICES, DESIGN_DECISIONS, SECURITY) |
-| **Joanne Obodoagwu** | Azure infrastructure · Resource provisioning · Key Vault · Blob Storage · App Service deployment · Cosmos DB setup · Microsoft Foundry deployment · Azure Computer Vision resource provisioning · Cloud integration |
+| **Joanne Dada** | Azure infrastructure · Resource provisioning · Key Vault · Blob Storage · App Service deployment · Cosmos DB setup · Microsoft Foundry deployment · Azure Computer Vision resource provisioning · Cloud integration |
 | **Fatima** | Research support · Accessibility input · Feature ideation |
 
 ---
