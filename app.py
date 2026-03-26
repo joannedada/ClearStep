@@ -564,6 +564,43 @@ MEDICAL_KEYWORDS = [
     "as needed", "with food", "before meals", "after meals",
 ]
 
+# Frequency expansion map — maps stacked frequency phrases to named time instances.
+# Unmappable frequencies (e.g. "times weekly") are moved to key_items instead.
+FREQ_MAP = {
+    "three times daily":   ["morning", "afternoon", "evening"],
+    "three times a day":   ["morning", "afternoon", "evening"],
+    "three times per day": ["morning", "afternoon", "evening"],
+    "3 times daily":       ["morning", "afternoon", "evening"],
+    "3 times a day":       ["morning", "afternoon", "evening"],
+    "twice daily":         ["morning", "evening"],
+    "twice a day":         ["morning", "evening"],
+    "two times daily":     ["morning", "evening"],
+    "two times a day":     ["morning", "evening"],
+    "2 times daily":       ["morning", "evening"],
+    "2 times a day":       ["morning", "evening"],
+}
+
+FREQ_UNMAPPABLE_PATTERNS = [
+    "times daily", "times a day", "times per day",
+    "times weekly", "times a week",
+]
+
+
+def expand_frequency_task(task):
+    """Try to expand a stacked frequency task into named instances.
+    Returns (expanded_tasks, was_expanded, is_unmappable)."""
+    low = task.lower()
+    for pattern, times in FREQ_MAP.items():
+        if pattern in low:
+            base = re.sub(re.escape(pattern), "", task, flags=re.IGNORECASE).strip()
+            base = re.sub(r"\s+", " ", base).strip(" —–-")
+            return [f"{base} — {t}" for t in times], True, False
+    for pattern in FREQ_UNMAPPABLE_PATTERNS:
+        if pattern in low:
+            return [task], False, True
+    return [task], False, False
+
+
 def _clean_list(lst):
     if not isinstance(lst, list):
         return []
@@ -690,12 +727,33 @@ def validate_response(parsed, mode, reading_level="standard"):
                 if w.lower() not in existing:
                     parsed["warnings"].append(w)
 
-        # Detect frequency left inside task text — model should have expanded these into instances
-        freq_patterns = ["times daily", "times a day", "times per day", "times weekly", "times a week"]
-        freq_leaked = [t for t in parsed.get("tasks", []) if any(p in t.lower() for p in freq_patterns)]
-        if freq_leaked:
-            logger.warning("ClearStep frequency_in_task_detected", extra={
-                "custom_dimensions": {"count": str(len(freq_leaked)), "examples": str(freq_leaked[:2])}
+        # Frequency expansion — expand stacked frequencies into named task instances.
+        # Unmappable frequencies are moved to key_items and logged separately.
+        expanded_tasks = []
+        freq_expanded_count = 0
+        freq_unmappable = []
+        for task in parsed.get("tasks", []):
+            result, was_expanded, is_unmappable = expand_frequency_task(task)
+            if was_expanded:
+                expanded_tasks.extend(result)
+                freq_expanded_count += 1
+            elif is_unmappable:
+                freq_unmappable.append(task)
+            else:
+                expanded_tasks.append(task)
+        if freq_expanded_count:
+            parsed["tasks"] = expanded_tasks
+            logger.warning("ClearStep frequency_expanded", extra={
+                "custom_dimensions": {"expanded_count": str(freq_expanded_count)}
+            })
+        if freq_unmappable:
+            existing_key_items = [k.lower() for k in parsed.get("key_items", [])]
+            for t in freq_unmappable:
+                if t.lower() not in existing_key_items:
+                    parsed.setdefault("key_items", []).append(t)
+            parsed["tasks"] = [t for t in parsed.get("tasks", []) if t not in freq_unmappable]
+            logger.warning("ClearStep frequency_unmappable_kept", extra={
+                "custom_dimensions": {"count": str(len(freq_unmappable)), "examples": str(freq_unmappable[:2])}
             })
 
         if parsed["is_medical"]:
