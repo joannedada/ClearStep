@@ -1,7 +1,7 @@
 # ClearStep
 ### Microsoft Innovation Challenge Hackathon — March 2026
 
-> **ClearStep is an AI decision-support system that reduces cognitive overload** — helping users determine if something is safe to act on, and breaking overwhelming information into clear, calm, actionable steps. Built for neurodiverse users who need structure, not more noise.
+> **ClearStep is an AI decision-support system that reduces cognitive overload** while helping users determine if something is safe to act on, and breaking overwhelming information into clear, calm, actionable steps. Built for neurodiverse users who need structure, not more noise.
 
 **🔗 Live Demo:** [`https://clearstep-gqb6gpa9hzbdf5gy.canadaeast-01.azurewebsites.net`](https://clearstep-gqb6gpa9hzbdf5gy.canadaeast-01.azurewebsites.net)
 **📁 Repository:** [github.com/joannedada/clearstep](https://github.com/joannedada/clearstep)
@@ -12,7 +12,7 @@
 
 **Cognitive Load Reduction Assistant** — *An adaptive AI system that simplifies complex information for users experiencing cognitive overload.*
 
-Neurodiverse individuals — including people with ADHD, autism, and dyslexia — experience cognitive overload when interacting with dense documents, complex tasks, or unstructured information. The challenge called for an AI-powered assistant that:
+Neurodiverse individuals, including people with ADHD, autism, and dyslexia, experience cognitive overload when interacting with dense documents, complex tasks, or unstructured information. The challenge called for an AI-powered assistant that:
 
 - Transforms information into clear, structured, and personalised formats aligned to individual accessibility preferences
 - Decomposes complex instructions into step-by-step, time-boxed tasks
