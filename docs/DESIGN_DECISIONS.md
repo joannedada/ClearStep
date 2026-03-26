@@ -1,4 +1,4 @@
-# ClearStep - Design Decisions
+# ClearStep — Design Decisions
 ### Why we built it the way we did
 
 ---
@@ -10,82 +10,82 @@ Every design decision flows from this constraint.
 
 ---
 
-## Colour System - Accessibility Tools, Not Themes
+## Colour System — Accessibility Tools, Not Themes
 
-Each palette overrides the full set of CSS semantic variables, not just background and text, but every state colour, including safe, caution, danger, warning, medical bar, and now `--mark-done`. No hardcoded colour competes with the active profile.
+Each palette overrides the full set of CSS semantic variables — not just background and text, but every state colour including safe, caution, danger, warning, medical bar, and now `--mark-done`. No hardcoded colour competes with the active profile.
 
 | Profile | Who it's for | Design decision |
 |---|---|---|
-| **Calm default** | General users | Off-white (#F7F7F2) reduces screen glare. Muted teal accent is non-aggressive. No pure white, as it creates a harsh contrast under stress. |
+| **Calm default** | General users | Off-white (#F7F7F2) reduces screen glare. Muted teal accent is non-aggressive. No pure white — pure white creates harsh contrast under stress. |
 | **Low sensory** | Autism / sensory sensitivity | Zero red, orange, or amber anywhere. All alerts use darker/lighter variants of the accent green-neutral family. Even "High Risk" renders in deep muted teal. |
-| **Dyslexia-friendly** | Dyslexia | Cream background (#F5F0E0) reduces visual vibration. Both --accent and --safe are muted and in the same blue-green family, no competing colours. |
-| **High focus** | ADHD | Single accent colour only. `--mark-done` shifted to blue (#2A6EA8); the completion action is visually distinct from safe-state green, reinforcing focus on the current task. |
-| **Dark mode** | Photosensitivity / night use | Dark navy (#1C1F26), not pure black. `--mark-done` uses muted teal (#28806A) instead of the vivid safe green, calmer on dark backgrounds. |
+| **Dyslexia-friendly** | Dyslexia | Cream background (#F5F0E0) reduces visual vibration. Both --accent and --safe are muted and in the same blue-green family — no competing colours. |
+| **High focus** | ADHD | Single accent colour only. `--mark-done` shifted to blue (#2A6EA8) — the completion action is visually distinct from safe-state green, reinforcing focus on the current task. |
+| **Dark mode** | Photosensitivity / night use | Dark navy (#1C1F26), not pure black. `--mark-done` uses muted teal (#28806A) instead of the vivid safe green — calmer on dark backgrounds. |
 
-**Mode card readability fix:** The mode selection cards use hardcoded light backgrounds (#EDF4F8, #F5F0E8) that don't respond to profile variables. Subtitle text is hardcoded to dark (#3A3630) so it remains readable regardless of which profile is active, including dark mode.
+**Mode card readability fix:** The mode selection cards use hardcoded light backgrounds (#EDF4F8, #F5F0E8) that don't respond to profile variables. Subtitle text is hardcoded to dark (#3A3630) so it remains readable regardless of which profile is active — including dark mode.
 
 ---
 
 ## Typography and Spacing
 
-- **Bebas Neue** - display headings, high visual weight, fast to scan under stress
-- **DM Sans** - body copy, low cognitive effort to parse
-- **DM Mono** - labels and metadata, visually separates instructional text from UI chrome
+- **Bebas Neue** — display headings, high visual weight, fast to scan under stress
+- **DM Sans** — body copy, low cognitive effort to parse
+- **DM Mono** — labels and metadata, visually separates instructional text from UI chrome
 - Line height scales with reading level: 2.0 (Big), 1.75 (Normal), 1.65 (Small)
-- Maximum content width 640px - prevents long line lengths that increase reading error rate
-- `fractalNoise` SVG texture overlay (opacity 0.025) reduces the sterile feel of flat colour screens
+- Maximum content width 640px — prevents long line lengths that increase reading error rate
+- `fractalNoise` SVG texture overlay (opacity 0.025) — reduces sterile feel of flat colour screens
 
 ---
 
-## Interaction Design - Slowing Down, Not Speeding Up
+## Interaction Design — Slowing Down, Not Speeding Up
 
 - Mode selection: two options only. No menu, no dashboard.
 - Results never auto-scroll. User controls pacing.
-- Step-by-step shows one step at a time by default - seeing all steps at once recreates the original overwhelm
-- Undo available at every stage - last step, specific step, or all steps
+- Step-by-step shows one step at a time by default — seeing all steps at once recreates the original overwhelm
+- Undo available at every stage — last step, specific step, or all steps
 - **No enforced timers.** Countdown timers add urgency and anxiety for users already in cognitive overload. Optional calendar reminders replace imposed deadlines.
-- The topbar fades to 20% opacity on the mode screen - it exists but does not compete for attention
+- The topbar fades to 20% opacity on the mode screen — it exists but does not compete for attention
 
 ---
 
-## Word Limits - A Safety Decision, Not a Style Choice
+## Word Limits — A Safety Decision, Not a Style Choice
 
-Tasks are guided to 8 words or fewer. This is intentional and non-negotiable for this user group:
+Tasks are capped at 8 words regardless of reading level. This is intentional and non-negotiable for this user group:
 
 - Reading a long task creates cognitive load before the action even begins
 - Incomplete tasks (truncated mid-word) create anxiety and confusion
 - The correct solution when an action needs more words is to **split it into 2 tasks**, not stretch the limit
 
-The model is explicitly instructed to split overlong actions. Unlike other fields (signals, warnings, key_items), tasks are **not** hard-truncated by `_trim_items()` in Python because truncating a task mid-thought is worse than a task running slightly long. The prompt is the enforcement layer for task length. Python truncation is reserved for fields where a hard cut cannot corrupt meaning (labels, signals, short warnings).
+The model is explicitly instructed to split overlong actions. `_trim_items()` in Python enforces the cap as a backstop. Both layers exist because one alone is not sufficient.
 
 ---
 
-## Batch Task Delivery - A Cognitive Load Decision
+## Batch Task Delivery — A Cognitive Load Decision
 
-When a document produces more than 5 tasks, all tasks are generated by the model, but the frontend delivers only 5 at a time. Rationale:
+When a document produces more than 5 tasks, all tasks are generated by the model but the frontend delivers them 5 at a time. Rationale:
 
 - Seeing 10+ steps at once recreates the overwhelm the user came to escape
 - The user completes a meaningful unit of work before the next set appears
-- A clear notice appears before the user starts: "Long document - showing 5 steps at a time. More will follow."
-- The user controls when to load the next batch; it never auto-loads
+- A clear notice appears before the user starts: "Long document — showing 5 steps at a time. More will follow."
+- The user controls when to load the next batch — it never auto-loads
 - The "Continue to next N steps" button shows exactly how many steps are coming
 
 ---
 
-## File Attachment - Reducing the Copy/Paste Barrier
+## File Attachment — Reducing the Copy/Paste Barrier
 
-Many users who would benefit most from ClearStep have the hardest time using it without a file attachment:
+Many users who would benefit most from ClearStep have the hardest time using it without file attachment:
 - Motor difficulties make selecting and copying text from a PDF painful
 - Low digital literacy means multi-step copy/paste workflows are confusing
 - Some documents arrive as images (photos of letters, screenshots of instructions) with no copyable text
 
-File attachment supports .txt, .pdf, .docx, and screenshots (.png, .jpg, .jpeg). All files are extracted in memory; nothing is stored. All extracted text passes through the full content screening stack before reaching the user or the AI pipeline.
+File attachment supports .txt, .pdf, .docx, and screenshots (.png, .jpg, .jpeg). All files are extracted in memory — nothing stored. All extracted text passes through the full content screening stack before reaching the user or the AI pipeline.
 
-The attach button is deliberately sized and styled to be visible and easy to click — larger padding, legible font, distinct border, while remaining calm and consistent with the ClearStep aesthetic.
+The attach button is deliberately sized and styled to be visible and easy to click — larger padding, legible font, distinct border — while remaining calm and consistent with the ClearStep aesthetic.
 
 ---
 
-## Upload Safety - Defence in Depth
+## Upload Safety — Defence in Depth
 
 Uploads are the highest-risk input vector. A user pasting text is a known format. A file is unknown until opened. The upload pipeline applies more checks than the text pipeline:
 
@@ -101,11 +101,11 @@ All of this runs before any text is returned to the frontend. Files are never st
 
 ## Medical Safety Hardening
 
-Medical content receives a stricter pipeline. All of the following are enforced in Python inside `validate_response()`, not just in the prompt:
+Medical content receives a stricter pipeline. All of the following are enforced in Python inside `validate_response()` — not just in the prompt:
 
 - **Mandatory disclaimer:** If missing, appended automatically and logged to App Insights
 - **Leaked warning detection:** Tasks starting with "do not", "never", "avoid" are moved to warnings
-- **Hard fail on empty warnings:** If `is_medical=True` and warnings are empty, endpoint returns 500
+- **Hard fail on empty warnings:** If `is_medical=True` and warnings is empty, endpoint returns 500
 - **Medical badge blocked:** Medical content never shows "CLEAR" — enforced in `renderResult()`
 - **Persistent disclaimer bar:** Stays visible across all phases — never cleared by phase transitions
 - **Dosing verbatim rule:** Model instructed never to paraphrase dosing numbers, quantities, or timing
@@ -113,51 +113,105 @@ Medical content receives a stricter pipeline. All of the following are enforced 
 
 ---
 
-## Text-to-Speech - Reducing Reading Burden
+## Text-to-Speech — Reducing Reading Burden
 
 For users with dyslexia, low literacy, or cognitive fatigue, reading result sections creates the very overhead ClearStep is designed to reduce. TTS buttons appear on:
 - The meaning summary
 - Warnings (simple mode)
 - Next steps (safe mode)
-- The current task in the step-by-step view
+- The current task in step-by-step view
 
-The voice matches the detected language; a Spanish-speaking user hears Spanish audio without configuration. Audio is generated per request and never stored. Rate limited at 5/min to prevent abuse.
+The voice matches the detected language — a Spanish-speaking user hears Spanish audio without configuration. Audio is generated per request and never stored. Rate limited at 5/min to prevent abuse.
 
 ---
 
-## Calendar Reminders - Voluntary, Not Imposed
+## Calendar Reminders — Voluntary, Not Imposed
 
 The reminder system is entirely optional and user-initiated. The design:
 
 - User adds a reminder only when they decide they need one
 - Smart mode detection: tasks containing deadline keywords automatically open the date picker
 - Time options are named in plain language ("In 1 hour", "This afternoon", "Tomorrow morning")
-- Calendar events open in Google Calendar or Outlook, no accounts, no OAuth, no data stored in ClearStep
+- Calendar events open in Google Calendar or Outlook — no accounts, no OAuth, no data stored in ClearStep
 
-This is a deliberate contrast to systems that auto-set reminders or impose deadlines, both patterns that add urgency for users who are already overwhelmed.
+This is a deliberate contrast to systems that auto-set reminders or impose deadlines — both patterns that add urgency for users who are already overwhelmed.
 
 ---
 
-## Schema Validation - Why Python Enforcement Matters
+## Schema Validation — Why Python Enforcement Matters
 
 The prompt asks Claude to follow rules. `validate_response()` enforces them. Both are needed:
 
-- The prompt is the first line of defence, but models can deviate
+- The prompt is the first line of defence but models can deviate
 - Python validation catches deviations before the user sees anything
-- This is especially important for medical content, where a missed disclaimer or a safety rule appearing as a task could cause real harm
-- Schema failures return 500; a partial or malformed result never reaches the user
+- This is especially important for medical content where a missed disclaimer or a safety rule appearing as a task could cause real harm
+- Schema failures return 500 — a partial or malformed result never reaches the user
 
 ---
 
-## Fallback Mode - Transparency Over Silence
+## Fallback Mode — Transparency Over Silence
 
-If the Anthropic API fails, the frontend runs a keyword-scoring fallback. This always produces something, but it must never be silent about what it is. A visible caution bar ("AI unavailable, showing basic analysis only") appears on every fallback result. The app never pretends that a keyword match is an AI analysis.
+If the Anthropic API fails, the frontend runs a keyword-scoring fallback. This always produces something — but it must never be silent about what it is. A visible caution bar ("AI unavailable — showing basic analysis only") appears on every fallback result. The app never pretends a keyword match is an AI analysis.
 
 ---
 
 ## Emotional Design Principles
 
-- No "you are being scammed" language - signals are labelled as patterns, not accusations
-- No fear amplification - High Risk means "take care", not "you are in immediate danger"
-- No false certainty - every result includes "ClearStep is an AI tool. Always verify with a professional."
-- Crisis response bypasses the entire AI pipeline - hardcoded 988 response in Python, cannot be altered by any model behaviour
+- No "you are being scammed" language — signals are labelled as patterns, not accusations
+- No fear amplification — High Risk means "take care", not "you are in immediate danger"
+- No false certainty — every result includes "ClearStep is an AI tool. Always verify with a professional."
+- Crisis response bypasses the entire AI pipeline — hardcoded 988 response in Python, cannot be altered by any model behaviour
+
+---
+
+## Document Upload — Reducing the Barrier to Access
+
+Users can upload real-world documents — forms, medical instructions, emails, letters — and ClearStep applies the same structured pipeline to extract key facts, separate safety warnings, and generate clear, step-by-step actions. Each step can optionally be turned into a calendar reminder, allowing users to act without holding everything in memory.
+
+This matters because the users who would benefit most from ClearStep often have the hardest time using it without file attachment:
+
+- Motor difficulties make selecting and copying text from a PDF painful
+- Low digital literacy means multi-step copy/paste workflows are confusing
+- Some documents arrive as images — photos of letters, screenshots of instructions — with no copyable text at all
+
+The upload pipeline supports .txt, .pdf, .docx, and screenshots (.png, .jpg, .jpeg). All files are extracted in memory — nothing stored. All extracted text passes through the full content screening stack before reaching the user or the AI pipeline. The file attachment button is deliberately sized and styled to be visible and easy to click — larger padding, legible font, distinct border — while remaining calm and consistent with the ClearStep aesthetic.
+
+The connection between upload and calendar reminders is intentional: a user who cannot easily copy a medical instruction should also not have to manually create a reminder. The full flow — attach, process, step through, remind — is designed to require as little friction as possible.
+
+---
+
+## No Timers — Pacing as a Safety Decision
+
+The challenge brief mentions "time-boxed tasks." ClearStep made a deliberate decision not to enforce timers.
+
+For users already experiencing cognitive overload, countdowns introduce urgency and pressure — which increases cognitive load instead of reducing it. A timer that runs out while a user is mid-task creates anxiety, interrupts focus, and can cause the user to rush or abandon the task entirely. This is the opposite of what ClearStep is designed to do.
+
+Instead, ClearStep supports focus through user-controlled pacing and optional reminders:
+
+- Steps are shown one at a time — the user controls when to move forward
+- No step auto-advances
+- Reminders are entirely optional and user-initiated, with named time options ("In 1 hour", "This afternoon", "Tomorrow morning") rather than countdowns
+- For long documents, tasks are batched in groups of 5 — the user explicitly requests the next batch
+
+This is a direct response to the challenge brief, not an omission of it. Timers are a common pattern in productivity tools. For neurodiverse users, they are often harmful. ClearStep chose structure over speed.
+
+---
+
+## No Fake Encouragement — Clarity Over Artificial Positivity
+
+ClearStep deliberately avoids generic encouragement patterns — phrases like "You're doing great!", "Almost there!", or "Nice work!" are not present in the application.
+
+This is a specific design decision, not an oversight.
+
+For neurodiverse users, false reassurance can be actively misleading. If a user is completing a task incorrectly — misreading a medical instruction, missing a deadline field in a government form — being told they are "doing great" undermines their ability to course-correct. It also creates a false sense of completion that can have real consequences.
+
+There is a deeper reason: AI does not have full context of the user's situation. ClearStep sees the text that was pasted. It does not know whether the user has understood the steps, whether they have the resources to complete them, or whether their situation has changed. Offering encouragement from a position of incomplete information is not supportive — it is presumptuous.
+
+ClearStep's approach prioritises clarity and trust over artificial positivity:
+
+- Results are calm and factual, not cheerful
+- Warnings are stated clearly, not softened into suggestions
+- Medical content always defers to the original document and a real professional
+- The app never presents itself as knowing more than it does
+
+The goal is to be the kind of tool a user can trust — not the kind that tells them what they want to hear.
