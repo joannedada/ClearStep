@@ -548,6 +548,16 @@ REQUIRED_FIELDS = {
 }
 MEDICAL_DISCLAIMER = "Reminder tool only — always follow your original prescription"
 
+# Keywords used by is_medical backstop — if model returns is_medical=false but any of these
+# appear in output fields, override to true so all medical safeguards apply.
+MEDICAL_KEYWORDS = [
+    "tablet", "capsule", "mg", "dose", "dosage", "prescription", "medication",
+    "medicine", "drug", "pharmacy", "pharmacist", "inject", "injection",
+    "inhaler", "antibiotic", "insulin", "refill", "side effect", "contraindication",
+    "doctor", "physician", "clinic", "hospital", "diagnosis", "symptom",
+    "treatment", "therapy", "surgery", "procedure", "discharge instructions",
+]
+
 def _clean_list(lst):
     if not isinstance(lst, list):
         return []
@@ -623,6 +633,23 @@ def validate_response(parsed, mode, reading_level="standard"):
 
     if mode == "simple":
         parsed["is_medical"] = bool(parsed.get("is_medical", False))
+
+        # is_medical keyword backstop — model can misclassify medical content as non-medical.
+        # If model returned is_medical=false, scan all output fields for medical keywords.
+        # If any match, override to true so all medical safeguards apply unconditionally.
+        if not parsed["is_medical"]:
+            output_text = " ".join([
+                parsed.get("meaning", ""),
+                " ".join(parsed.get("tasks", [])),
+                " ".join(parsed.get("warnings", [])),
+                " ".join(parsed.get("key_items", [])),
+            ]).lower()
+            if any(kw in output_text for kw in MEDICAL_KEYWORDS):
+                parsed["is_medical"] = True
+                logger.warning("ClearStep is_medical_backstop_triggered", extra={
+                    "custom_dimensions": {"action": "overridden_to_true"}
+                })
+
         if not parsed.get("tasks"):
             errors.append("tasks list is empty")
         # Task list has no hard count cap — frontend batches in groups of 5
