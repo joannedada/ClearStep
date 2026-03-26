@@ -176,6 +176,12 @@ Full mapping with implementation detail: [`docs/RESPONSIBLE_AI.md`](./docs/RESPO
 
 ## Accessibility Design
 
+These aren't themes — they're cognitive accessibility profiles. Each one is designed for a different type of visual processing need, and the system remembers and applies it automatically.
+
+![ClearStep Accessibility Colour Profiles](./docs/palette_preview.png)
+
+**[→ View interactive palette showcase](https://htmlpreview.github.io/?https://github.com/joannedada/clearstep/blob/main/docs/clearstep_palettes.html)** — see each profile rendered with real colours, hex values, and design rationale.
+
 Five colour palettes each override the full CSS semantic variable set — not just background and text, but every state colour including safe, caution, danger, warning, medical bar, and completion states.
 
 | Profile | Who it's for | Key decision |
@@ -270,7 +276,12 @@ clearstep/
     ├── AZURE_SERVICES.md   # Every Azure integration explained
     ├── DESIGN_DECISIONS.md # Why we built it the way we did
     ├── CONTRIBUTING.md     # Local setup, architecture orientation, dev notes
-    └── QA.md               # Design decisions, tradeoffs, judging criteria Q&A
+    ├── QA.md               # Design decisions, tradeoffs, judging criteria Q&A
+    ├── CONTRIBUTIONS.md    # Team contributions and ownership
+    ├── clearstep_pipeline.html  # Interactive AI pipeline explorer
+    ├── clearstep_palettes.html  # Interactive accessibility colour profiles
+    ├── pipeline_preview.png     # Pipeline diagram screenshot (README)
+    └── palette_preview.png      # Colour profiles screenshot (README)
 ```
 
 ---
