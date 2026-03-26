@@ -35,10 +35,10 @@ ClearStep is a two-mode AI system designed to reduce cognitive overload in momen
 Paste any message, email, link, or text that feels suspicious or confusing. ClearStep runs it through a 3-layer AI pipeline and returns:
 - A risk level: **Safe**, **Caution**, or **High Risk**
 - The specific warning signals detected (urgency pressure, impersonation, suspicious links, money requests, threat language)
-- Exactly what to do next — two calm, actionable steps
+- Exactly what to do next; two calm, actionable steps
 
 ### Mode 2 — Make It Simple
-Paste anything overwhelming — medical instructions, government appeals, confusing work emails, complex onboarding tasks. Or attach a file (.txt, .pdf, .docx, or a screenshot). ClearStep breaks it into:
+Paste anything overwhelming like medical instructions, government appeals, confusing work emails, complex onboarding tasks. Or attach a file (.txt, .pdf, .docx, or a screenshot). ClearStep breaks it into:
 - **Before you start** — safety warnings (things to never do) separated from action steps
 - **Key facts** — deadlines, requirements, conditions (labelled, 2–4 words each)
 - **One step at a time** — progress bar, completion tracking, undo, optional calendar reminders
@@ -50,9 +50,9 @@ Paste anything overwhelming — medical instructions, government appeals, confus
 
 | Challenge Requirement | ClearStep Implementation |
 |---|---|
-| Decompose complex instructions into step-by-step tasks | Make It Simple mode — extracts and sequences every action from the source document, one step at a time |
-| Time-boxed tasks | Optional calendar reminders — user-initiated, not imposed. Google Calendar + Outlook. No urgency added. |
-| Adjustable reading levels | Three levels (Big / Normal / Small) — controls font size, line height, and AI output density. The model writes differently at each level. |
+| Decompose complex instructions into step-by-step tasks | Make It Simple mode that extracts and sequences every action from the source document, one step at a time |
+| Time-boxed tasks | Optional calendar reminders, user-initiated, not imposed. Google Calendar + Outlook. No urgency added. |
+| Adjustable reading levels | Three levels (Big / Normal / Small) controls font size, line height, and AI output density. The model writes differently at each level. |
 | Simplify and summarise documents | Meaning field capped at 8–15 words by reading level. Key items surface deadlines and conditions without surrounding complexity. |
 | Focus support through reminders | Step-level reminders with named time options. Smart detection opens date picker for deadline-containing tasks. |
 | Securely stored accessibility preferences | Palette and reading level stored in Azure Cosmos DB per anonymous session. Applied automatically on return. |
@@ -64,7 +64,7 @@ Paste anything overwhelming — medical instructions, government appeals, confus
 
 ## 3-Layer AI Pipeline
 
-Every request passes through three layers in strict sequence. A failure at any layer is handled gracefully — the app never crashes.
+Every request passes through three layers in strict sequence. A failure at any layer is handled gracefully and the app never crashes.
 
 ```
 User Input (text or uploaded file)
@@ -130,23 +130,23 @@ Full architecture and request flow diagrams: [`docs/ARCHITECTURE.md`](./docs/ARC
 
 ## Azure Services — 11 Services + Microsoft Foundry
 
-ClearStep uses 11 Azure services and Microsoft Foundry. Each was chosen for a specific reason — not to pad a list.
+ClearStep uses 11 Azure services and Microsoft Foundry. Each was chosen for a specific reason, not to pad a list.
 
 | Service | Purpose |
 |---|---|
-| **Azure App Service** | Hosts the Flask application — managed hosting with GitHub Actions CI/CD |
+| **Azure App Service** | Hosts the Flask application - managed hosting with GitHub Actions CI/CD |
 | **Azure AI Content Safety** | Crisis screening (SelfHarm ≥ 4 → 988 response) + Prompt Shields jailbreak detection. Runs before any LLM. Also screens all uploaded file content. |
-| **Azure OpenAI via Microsoft Foundry** | Signal extraction — 5 boolean flags injected into Claude's prompt as pre-processed context |
-| **Azure AI Language** | Language detection — non-English inputs trigger full multilingual Claude response across all fields |
-| **Azure AI Speech** | Text-to-speech — converts result sections to MP3 audio on demand. 10 languages. Audio never stored. |
-| **Azure Computer Vision** | OCR for image uploads — extracts text from screenshots and photos (.png, .jpg, .jpeg) |
-| **Azure Key Vault** | Secrets management — no keys in code or config files. Managed Identity auth. |
-| **Azure Blob Storage** | Audit log — AI response JSON stored per analysis. No raw message content. |
-| **Azure Application Insights** | Telemetry — 22+ custom events prove safety features are firing in production |
-| **Azure Cosmos DB** | Persistent accessibility preferences — palette and reading level stored anonymously per session |
+| **Azure OpenAI via Microsoft Foundry** | Signal extraction - 5 boolean flags injected into Claude's prompt as pre-processed context |
+| **Azure AI Language** | Language detection - non-English inputs trigger full multilingual Claude response across all fields |
+| **Azure AI Speech** | Text-to-speech - converts result sections to MP3 audio on demand. 10 languages. Audio never stored. |
+| **Azure Computer Vision** | OCR for image uploads - extracts text from screenshots and photos (.png, .jpg, .jpeg) |
+| **Azure Key Vault** | Secrets management - no keys in code or config files. Managed Identity auth. |
+| **Azure Blob Storage** | Audit log - AI response JSON stored per analysis. No raw message content. |
+| **Azure Application Insights** | Telemetry - 22+ custom events prove safety features are firing in production |
+| **Azure Cosmos DB** | Persistent accessibility preferences - palette and reading level stored anonymously per session |
 | **Microsoft Foundry** | Deployment platform for signal-classifier (gpt-4o-mini). Controlled capacity, version management, monitoring. |
 
-Full breakdown — why each was chosen, how it's wired, and where in the code: [`docs/AZURE_SERVICES.md`](./docs/AZURE_SERVICES.md)
+Full breakdown including why each was chosen, how it's wired, and where in the code: [`docs/AZURE_SERVICES.md`](./docs/AZURE_SERVICES.md)
 
 ---
 
@@ -158,8 +158,8 @@ Full breakdown — why each was chosen, how it's wired, and where in the code: [
 | **Reliability & Safety** | Crisis response hardcoded — cannot be altered by model behaviour. Prompt Shields detect jailbreak at infrastructure level. Upload content screening runs a full safety pipeline before any text reaches the LLM. Medical hardening enforced in Python. Schema validation rejects malformed output. Rate limiting prevents abuse. XSS sanitisation protects against model output injection. |
 | **Fairness** | 5 accessibility palettes designed for specific neurological needs. Reading level changes AI output density. Language detection serves non-English speakers automatically. File attachment supports users who cannot copy/paste. |
 | **Transparency** | "Why this result?" panel on every output. AI tool disclaimer always visible. Medical content always defers to original document. Fallback mode shows visible indicator when AI is unavailable. |
-| **Privacy** | No message content stored. No file content stored — files read in memory and discarded. Cosmos DB stores anonymous session ID + two preference values only. No accounts, no tracking. |
-| **Human Oversight** | Medical and legal content always defers to real professionals. Crisis response sends users to human services (988). App never presents itself as a replacement. Step engine never auto-advances — user controls every transition. |
+| **Privacy** | No message content stored. No file content stored as files are read in memory and discarded. Cosmos DB stores anonymous session ID + two preference values only. No accounts, no tracking. |
+| **Human Oversight** | Medical and legal content always defers to real professionals. Crisis response sends users to human services (988). App never presents itself as a replacement. Step engine never auto-advances, the user controls every transition. |
 | **Inclusiveness** | Built for ADHD, dyslexia, autism, low digital literacy, elderly users, and non-English speakers. File attachment reduces friction. TTS supports low-literacy and vision-impaired users. Fully responsive. |
 
 Full mapping with implementation detail: [`docs/RESPONSIBLE_AI.md`](./docs/RESPONSIBLE_AI.md)
@@ -208,7 +208,7 @@ Full security documentation including all 14 attack vector test results: [`docs/
 | Backend | Python Flask + Gunicorn | Lightweight, fast, native Azure deployment |
 | Primary AI | Anthropic Claude `claude-sonnet-4-20250514` | Best-in-class reasoning for medical and safety content |
 | Signal extraction | Azure OpenAI (gpt-4o-mini) via Microsoft Foundry | Fast, cheap, zero-temperature classification |
-| Crisis screening | Azure AI Content Safety | Hardened, purpose-built — not a prompt |
+| Crisis screening | Azure AI Content Safety | Hardened, purpose-built and not a prompt |
 | Language detection | Azure AI Language | Automatic multilingual support without UI complexity |
 | Text-to-speech | Azure AI Speech | On-demand MP3, 10 languages, audio never stored |
 | Image OCR | Azure Computer Vision | Extracts text from screenshots and photos |
@@ -284,7 +284,7 @@ These decisions were made to prioritise reliable real-time interaction, clear us
 
 ## Roadmap
 
-- **Azure Computer Vision live:** OCR endpoint URL and response shape to be validated once the Vision resource is active — scaffolding is complete in `app.py`
+- **Azure Computer Vision live:** OCR endpoint URL and response shape to be validated once the Vision resource is active. Scaffolding is complete in `app.py`
 - **Session history:** Optional anonymous history so users can revisit past analyses
 - **Browser extension:** "Is This Safe?" directly from email clients
 
