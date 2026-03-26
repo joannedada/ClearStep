@@ -1,4 +1,4 @@
-[README.md](https://github.com/user-attachments/files/26270245/README.md)
+[README.md](https://github.com/user-attachments/files/26270277/README.md)
 # ClearStep
 ### Microsoft AI Innovation Challenge Hackathon — March 2026
 
@@ -173,6 +173,8 @@ Full breakdown including why each was chosen, how it's wired, and where in the c
 
 Full mapping with implementation detail: [`docs/RESPONSIBLE_AI.md`](./docs/RESPONSIBLE_AI.md)
 
+![ClearStep RAI Compliance Map](./docs/rai_preview.png)
+
 **[→ Open interactive RAI compliance map](https://htmlpreview.github.io/?https://github.com/joannedada/clearstep/blob/main/docs/clearstep_rai.html)** — six RAI principles, each mapped to a specific implementation, named component, and working code snippet.
 
 ---
@@ -284,7 +286,8 @@ clearstep/
     ├── clearstep_palettes.html  # Interactive accessibility colour profiles
     └── clearstep_rai.html       # Interactive RAI compliance map — 6 principles, code evidence
     ├── pipeline_preview.png     # Pipeline diagram screenshot (README)
-    └── palette_preview.png      # Colour profiles screenshot (README)
+    ├── palette_preview.png      # Colour profiles screenshot (README)
+    └── rai_preview.png          # RAI compliance map screenshot (README)
 ```
 
 ---
