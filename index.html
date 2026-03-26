@@ -310,9 +310,9 @@ footer{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--bg3);disp
   <button class="topbar-brand" onclick="goBack()" aria-label="Go to home screen"><span class="brand-clear">Clear</span><span class="brand-step">Step</span></button>
   <div class="topbar-right">
     <div class="rl-levels">
-      <button class="rl-btn" data-rl="simple" onclick="setRL(this)">Big</button>
-      <button class="rl-btn active" data-rl="standard" onclick="setRL(this)">Normal</button>
-      <button class="rl-btn" data-rl="detailed" onclick="setRL(this)">Small</button>
+      <button class="rl-btn" data-rl="simple" onclick="setRL(this,true)">Big</button>
+      <button class="rl-btn active" data-rl="standard" onclick="setRL(this,true)">Normal</button>
+      <button class="rl-btn" data-rl="detailed" onclick="setRL(this,true)">Small</button>
     </div>
     <button class="tb-btn" onclick="openWizard()">
       <div class="pal-dots" id="topDots">
@@ -624,7 +624,7 @@ function buildProfGrid(){const g=document.getElementById('profGrid');if(!g)retur
 let curRL='standard';
 const RL_FS={simple:'1.2rem',standard:'1.06rem',detailed:'1rem'};
 const RL_LH={simple:'2.0',standard:'1.75',detailed:'1.65'};
-function loadRL(){try{const s=localStorage.getItem('cs_rl');if(s){const b=document.querySelector(`[data-rl="${s}"]`);if(b)setRL(b);}}catch(e){}}
+function loadRL(){try{const s=localStorage.getItem('cs_rl');if(s){const b=document.querySelector(`[data-rl="${s}"]`);if(b)setRL(b,false);}}catch(e){}}
 let state={tasks:[],currentIndex:0,completed:[],showAll:false,done:false,reminderMins:null};
 function showPhase(n){[1,2,3,4].forEach(i=>{const el=document.getElementById('simplePhase'+i);if(el)el.style.display=i===n?'block':'none';});}
 function initTasks(tasks){allTasks=tasks;batchStart=0;allCompleted=[];const batch=allTasks.slice(0,TASK_BATCH_SIZE);state={tasks:batch,currentIndex:0,completed:[],showAll:false,done:false,reminderMins:null};const notice=document.getElementById('batchNotice');if(notice)notice.style.display=allTasks.length>TASK_BATCH_SIZE?'block':'none';showPhase(1);renderAllStepsLists();}
@@ -677,10 +677,17 @@ document.getElementById('msgInput').addEventListener('input',()=>{simpleBadgeOve
 // ═══ PERSISTENT PREFERENCES (Cosmos DB) ══════════════════
 const SESSION_KEY='cs_session_id';
 function getSessionId(){let sid=localStorage.getItem(SESSION_KEY);if(!sid){sid='cs_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9);localStorage.setItem(SESSION_KEY,sid);}return sid;}
-async function loadPreferences(){const sid=getSessionId();loadProfile();loadRL();try{const res=await fetch(`/api/preferences/${sid}`);if(!res.ok)return;const data=await res.json();if(data.found){if(data.palette&&PROFILES[data.palette]){curProfile=data.palette;applyVars(PROFILES[data.palette].vars);buildProfGrid();}if(data.reading_level){const btn=document.querySelector(`[data-rl="${data.reading_level}"]`);if(btn)setRL(btn);}}}catch(e){}}
-async function syncPreferencesToCloud(palette,reading_level){const sid=getSessionId();try{await fetch(`/api/preferences/${sid}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({palette,reading_level})});}catch(e){}}
-function saveProfile(k){try{localStorage.setItem('cs_profile',k);}catch(e){}syncPreferencesToCloud(k,curRL);}
-function setRL(btn){document.querySelectorAll('.rl-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');curRL=btn.dataset.rl;document.documentElement.style.setProperty('--fs',RL_FS[curRL]);document.documentElement.style.setProperty('--lh',RL_LH[curRL]);try{localStorage.setItem('cs_rl',curRL);}catch(e){}syncPreferencesToCloud(curProfile,curRL);}
+async function loadPreferences(){const sid=getSessionId();loadProfile();loadRL();try{const res=await fetch(`/api/preferences/${sid}`);if(!res.ok)return;const data=await res.json();if(data.found){if(data.palette&&PROFILES[data.palette]){curProfile=data.palette;applyVars(PROFILES[data.palette].vars);buildProfGrid();}// Restore saved history to localStorage
+if(Array.isArray(data.reading_level_history)&&data.reading_level_history.length){try{localStorage.setItem('cs_rl_history',JSON.stringify(data.reading_level_history));}catch(e){}}
+// Auto-infer preferred reading level from history (3+ entries, clear majority)
+const hist=data.reading_level_history||[];let inferredLevel=null;if(hist.length>=3){const counts={};hist.forEach(v=>{counts[v]=(counts[v]||0)+1;});const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);if(sorted[0][1]>=2)inferredLevel=sorted[0][0];}
+const levelToApply=inferredLevel||data.reading_level;if(levelToApply){const btn=document.querySelector(`[data-rl="${levelToApply}"]`);if(btn){setRL(btn,false);if(inferredLevel&&inferredLevel!==data.reading_level){toast('Reading level auto-set based on your history.');}}}}}catch(e){}}
+async function syncPreferencesToCloud(palette,reading_level,rl_history){const sid=getSessionId();try{await fetch(`/api/preferences/${sid}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({palette,reading_level,reading_level_history:rl_history||[]})});}catch(e){}}
+function saveProfile(k){try{localStorage.setItem('cs_profile',k);}catch(e){}syncPreferencesToCloud(k,curRL,getRLHistory());}
+let rlManual=false;
+function getRLHistory(){try{return JSON.parse(localStorage.getItem('cs_rl_history')||'[]');}catch(e){return[];}}
+function appendRLHistory(level){try{const h=getRLHistory();h.push(level);if(h.length>10)h.shift();localStorage.setItem('cs_rl_history',JSON.stringify(h));}catch(e){}}
+function setRL(btn,manual){document.querySelectorAll('.rl-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');curRL=btn.dataset.rl;document.documentElement.style.setProperty('--fs',RL_FS[curRL]);document.documentElement.style.setProperty('--lh',RL_LH[curRL]);try{localStorage.setItem('cs_rl',curRL);}catch(e){}if(manual){appendRLHistory(curRL);}syncPreferencesToCloud(curProfile,curRL,getRLHistory());}
 
 // ═══ INIT ═════════════════════════════════════════════════
 const tb=document.querySelector('.topbar-right');tb.style.opacity='0';tb.style.transition='opacity 0.8s';tb.style.pointerEvents='none';setTimeout(()=>{if(!currentMode){tb.style.opacity='0.2';}},2000);
