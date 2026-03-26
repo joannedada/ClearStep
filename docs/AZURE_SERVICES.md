@@ -1,7 +1,7 @@
 # ClearStep — Azure Services
 ### Every integration explained: why it was chosen, how the app uses it, and where to find it in the code.
 
-For a quick overview of all 9 services, see the [README](../README.md#azure-services).
+For a quick overview of all services, see the [README](../README.md#azure-services).
 
 ---
 
@@ -19,9 +19,21 @@ For a quick overview of all 9 services, see the [README](../README.md#azure-serv
 ### 2. Azure AI Content Safety
 **Why it was chosen:** This is the most critical safety layer. It runs **before any LLM is invoked** — meaning no prompt injection, adversarial input, or model behaviour can bypass it. For a tool used by vulnerable populations, a hardcoded safety net is non-negotiable.
 
-**How the app uses it:** `screen_with_content_safety()` sends every input to the Content Safety API using `FourSeverityLevels` output. It screens for Hate, SelfHarm, Sexual, and Violence. If `SelfHarm` severity reaches 4, the function returns a hardcoded Python dict — the 988 Suicide and Crisis Lifeline response. Claude never sees the message. This is enforced in Python code, not a prompt instruction.
+**How the app uses it:**
 
-**Code location:** `screen_with_content_safety()` — first call inside `analyze()`, before all other processing
+*For message analysis:* `screen_with_content_safety()` sends every input to the Content Safety API using `FourSeverityLevels` output. It screens for Hate, SelfHarm, Sexual, and Violence. If `SelfHarm` severity reaches 4, the function returns a hardcoded Python dict — the 988 Suicide and Crisis Lifeline response. Claude never sees the message.
+
+`screen_prompt_shield()` calls the Prompt Shields endpoint on the same Content Safety resource. This detects jailbreak and prompt injection attempts at the infrastructure level. If an attack is detected, the app returns a hardcoded High Risk response immediately — Claude never sees the message.
+
+*For uploaded files:* `screen_upload_content()` runs a separate screening pass on all extracted file text before it is returned to the frontend. This inline check blocks:
+- `SelfHarm` severity ≥ 4 → crisis block with 988 message
+- `Sexual`, `Violence`, or `Hate` severity ≥ 2 → content blocked
+- Prompt injection detected via Prompt Shields → blocked
+- Cyber/malware keywords detected via regex → blocked
+
+Azure API calls in the upload screener are bounded to the first 1000 characters for latency reasons. The cyber regex scans the full 5000-character extraction.
+
+**Code location:** `screen_with_content_safety()`, `screen_prompt_shield()`, `screen_upload_content()` in `app.py`
 
 ---
 
@@ -37,69 +49,112 @@ For a quick overview of all 9 services, see the [README](../README.md#azure-serv
 ### 4. Azure AI Language
 **Why it was chosen:** ClearStep is built for accessibility. Limiting it to English excludes a significant portion of the neurodiverse, elderly, and low-literacy population it was designed to serve. Language detection makes multilingual support automatic — no language selector, no extra steps.
 
-**How the app uses it:** `detect_language()` calls the `LanguageDetection` endpoint on the first 500 characters of every input. It returns an ISO 639-1 code and confidence score. If the language is not English, a `lang_instruction` string is injected into the Claude prompt: *"The user's message is in [language]. Respond in [language]. All fields must be in [language]."* The `language_detected` telemetry event fires with language code and confidence.
+**How the app uses it:** `detect_language()` calls the `LanguageDetection` endpoint on the first 500 characters of every input. It returns an ISO 639-1 code and confidence score. If the language is not English, a `lang_instruction` string is injected into the Claude prompt. The `language_detected` telemetry event fires with language code and confidence.
 
 **Code location:** `detect_language()` — called in `analyze()` after Content Safety, before Azure OpenAI
 
 ---
 
-### 5. Azure Key Vault
+### 5. Azure AI Speech
+**Why it was chosen:** Text-to-speech directly serves users with low literacy, vision impairments, and those who process spoken language better than written. It was also the lowest-friction way to add audio support without requiring any browser permissions or client-side audio processing.
+
+**How the app uses it:** `/api/tts` accepts a text string and language code. It builds an SSML payload with a language-matched Neural voice and calls the Azure Speech REST API. The response is MP3 audio streamed directly back to the browser — no SDK dependency, no stored audio. Voices are selected per language from a 10-language map (English, Spanish, French, Portuguese, German, Chinese, Japanese, Korean, Arabic, Hindi). HTML tags are stripped before synthesis. Text is capped at 500 characters per request.
+
+**Rate limit:** 5 requests per minute per IP.
+
+**Graceful degradation:** If `AZURE_SPEECH_KEY` or `AZURE_SPEECH_REGION` are not configured, the endpoint returns HTTP 503 with `"Audio unavailable"`. The TTS buttons are simply not shown in the UI — the rest of the app is unaffected.
+
+**Code location:** `text_to_speech()`, `VOICE_MAP`, `VOICE_LOCALE_MAP`, `strip_html()` in `app.py`; `ttsSpeak()`, `ttsStop()`, `ttsShowButtons()` in `index.html`
+
+---
+
+### 6. Azure Computer Vision
+**Why it was chosen:** Many users — especially those who struggle with copy/paste, who receive documents as images, or who want to quickly photograph a letter or notice — cannot easily get text into a text box. Image OCR removes that barrier entirely.
+
+**How the app uses it:** `extract_text_from_image()` reads image bytes from the uploaded file and calls the **Azure Computer Vision Read API v3.2** — a two-step async call. Step 1 submits the image to `/vision/v3.2/read/analyze` and receives an `Operation-Location` URL in the response header. Step 2 polls that URL until status is `succeeded`, then extracts all text lines from `analyzeResult.readResults`. The extracted text then passes through the same `screen_upload_content()` screening pipeline as all other uploads before being returned to the frontend.
+
+Supported formats: `.png`, `.jpg`, `.jpeg`. Max file size: 5 MB. MIME type validated server-side.
+
+**Note:** The endpoint URL and response shape are provisional — this must be confirmed against the live Vision resource once active. The scaffolding in `app.py` uses the v3.2 Read API pattern.
+
+**Graceful degradation:** If `AZURE_VISION_ENDPOINT` or `AZURE_VISION_KEY` are not configured, the upload returns `"Screenshot reading is not enabled yet."` — no crash, clean user message.
+
+**Code location:** `extract_text_from_image()` in `app.py`; image file handling in `upload_file()`
+
+---
+
+### 7. Azure Key Vault
 **Why it was chosen:** Zero secrets hardcoded or committed anywhere. Key Vault provides centralised, auditable, access-controlled secret storage with Managed Identity authentication — no API keys in any file.
 
-**How the app uses it:** At startup, `SecretClient` connects to `keyvault-clearstep.vault.azure.net` and retrieves all secrets (Anthropic key, Azure OpenAI keys, Content Safety keys, Language keys, Cosmos keys, Blob connection string), overwriting environment variable values. If Key Vault is unavailable, the `try/except` block falls back to App Service environment variables — a Key Vault outage never takes down the application.
+**How the app uses it:** At startup, `SecretClient` connects to `keyvault-clearstep.vault.azure.net` and retrieves all secrets, overwriting environment variable values. Secrets retrieved include: Anthropic key, Azure OpenAI keys, Content Safety keys, Language keys, Cosmos keys, Blob connection string, Speech keys, and Vision keys. If Key Vault is unavailable, the `try/except` block falls back to App Service environment variables — a Key Vault outage never takes down the application.
+
+**Key Vault secret names to provision:**
+`ANTHROPIC-API-KEY`, `STORAGE-CONN-STR`, `AZURE-OPENAI-API-KEY`, `AZURE-OPENAI-DEPLOYMENT`, `AZURE-OPENAI-API-VERSION`, `AZURE-OPENAI-ENDPOINT`, `AZURE-CONTENT-SAFETY-ENDPOINT`, `AZURE-CONTENT-SAFETY-KEY`, `AZURE-LANGUAGE-ENDPOINT`, `AZURE-LANGUAGE-KEY`, `COSMOS-ENDPOINT`, `COSMOS-KEY`, `AZURE-SPEECH-KEY`, `AZURE-SPEECH-REGION`, `AZURE-VISION-ENDPOINT`, `AZURE-VISION-KEY`
+
+**Note:** `APPLICATIONINSIGHTS_CONNECTION_STRING` is loaded from App Service environment variables only — not retrieved from Key Vault. This is intentional: Application Insights is initialised at logger setup before Key Vault is queried, so it must be available as an env var.
 
 **Code location:** `SecretClient` block at the top of `app.py`, executed at startup
 
 ---
 
-### 6. Azure Blob Storage
+### 8. Azure Blob Storage
 **Why it was chosen:** Audit trail and accountability. Every analysis result is stored for review — risk distributions, medical flag rates, schema validation failures. Enables responsible AI monitoring. Raw message content is never stored.
 
-**How the app uses it:** `store_result_to_blob()` uploads a timestamped JSON file to the `results` container after every successful analysis. The stored object contains `risk_level`, `mode`, `reading_level`, `is_medical`, `schema_valid`, and the full AI response. No message text, no session ID, no user-identifying information of any kind.
+**How the app uses it:** `store_result_to_blob()` uploads a timestamped JSON file to the `results` container after every successful analysis. The stored object contains `risk_level`, `mode`, `reading_level`, `is_medical`, `schema_valid`, and the full AI response. No message text, no session ID, no user-identifying information of any kind. Uploaded file content is never stored — files are read in memory and discarded after extraction.
 
 **Code location:** `store_result_to_blob()` — called after `validate_response()` passes
 
 ---
 
-### 7. Azure Application Insights
+### 9. Azure Application Insights
 **Why it was chosen:** Production observability. Without telemetry, there is no evidence that safety features are firing. App Insights provides proof that responsible AI features are working in production — not just designed.
 
-**How the app uses it:** `AzureLogHandler` is attached to the Python logger at startup. 11 custom events fire via `logger.info()` with `custom_dimensions` dictionaries throughout the request lifecycle.
+**How the app uses it:** `AzureLogHandler` is attached to the Python logger at startup. Custom events fire via `logger.info()` and `logger.warning()` throughout the request lifecycle.
 
 | Event | When | What it proves |
 |---|---|---|
-| `session_created` | Every request starts | mode and reading level distribution |
+| `analysis_started` | Every request starts | mode and reading level distribution |
 | `task_decomposed` | Make It Simple completes | task counts, medical flag rate |
 | `message_assessed` | Is This Safe? completes | risk level distribution |
-| `content_safety_flagged` | Crisis detected | safety layer is firing |
+| `analysis_complete` | Every successful analysis | full pipeline execution confirmed |
+| `content_safety_flagged` | Crisis detected in message | safety layer is firing |
+| `prompt_shield_flagged` | Jailbreak attempt detected in message | prompt shield is firing |
 | `language_detected` | Every request | multilingual usage |
-| `leaked_warnings_detected` | Model put rules in tasks | model correction is working |
-| `medical_disclaimer_enforced` | Model omitted disclaimer | enforcement is firing |
+| `leaked_warnings_detected` | Model put safety rules in tasks | leaked warning correction is working |
+| `medical_disclaimer_enforced` | Model omitted disclaimer | medical enforcement is firing |
+| `is_medical_backstop_triggered` | Model returned is_medical=false but medical keywords detected | keyword backstop override fired |
+| `frequency_expanded` | Stacked frequency task corrected into named instances | frequency enforcement working |
+| `frequency_unmappable_kept` | Frequency could not be safely expanded — surfaced in key_items | graceful fallback for edge cases |
+| `risk_level_upgraded` | Model returned Safe but real warnings exist — upgraded to Caution | risk_level logic enforcement firing |
+| `schema_validation_failed` | Model returned bad structure | validation catching issues |
 | `reminder_created` | Calendar reminder added | feature usage |
 | `preferences_saved` | Palette/reading level changed | Cosmos DB writes |
 | `preferences_loaded` | Returning user detected | Cosmos DB reads |
-| `analysis_complete` | Every successful analysis | full pipeline execution confirmed |
+| `upload_processed` | File successfully extracted | upload pipeline working |
+| `upload_blocked` | File blocked by content screening | upload safety firing |
+| `upload_blocked_crisis` | SelfHarm ≥ 4 in uploaded file | upload crisis path working |
+| `upload_blocked_harmful` | Sexual/Violence/Hate ≥ 2 in file | upload harm screening firing |
+| `ocr_api_failed` | Vision API returned non-202 status | OCR API failure monitoring |
+| `tts_generated` | Audio successfully synthesised | TTS feature usage |
+| `tts_failed` | Speech API returned non-200 | TTS API failure monitoring |
+| `tts_exception` | Speech request threw an exception | TTS exception tracking |
 
-**Code location:** `logger.info()` calls throughout `analyze()`, `detect_language()`, `validate_response()`, `get_preferences()`, `save_preferences()`, `calendar_link()`
+**Code location:** `logger.info()` and `logger.warning()` calls throughout `app.py`
 
 ---
 
-### 8. Azure Cosmos DB
+### 10. Azure Cosmos DB
 **Why it was chosen:** Accessibility preferences are personal. A dyslexic user who configures the cream background and large text should not have to reconfigure every visit. Cosmos DB makes ClearStep remember users across sessions and devices — without storing any personal data.
 
-**How the app uses it:** `get_cosmos_container()` initialises a `CosmosClient`. The `clearstep` database and `user_preferences` container are created on first use. Each document stores exactly: `session_id` (anonymous, browser-generated random string), `palette`, and `reading_level`. The session ID is generated in JavaScript using `Date.now()` + random suffix — never linked to any identity. `loadPreferences()` calls `GET /api/preferences/<session_id>` on every page load. Every palette or reading level change calls `POST /api/preferences/<session_id>`. If Cosmos is unavailable, falls back to localStorage silently — user experience unaffected.
+**How the app uses it:** `get_cosmos_container()` initialises a `CosmosClient`. The `clearstep` database and `user_preferences` container are created on first use. Each document stores exactly: `session_id` (anonymous, browser-generated random string), `palette`, and `reading_level`. The session ID is generated in JavaScript using `Date.now()` + random suffix — never linked to any identity. If Cosmos is unavailable, falls back to localStorage silently — user experience unaffected.
 
 **Code location:** `get_cosmos_container()`, `get_preferences()`, `save_preferences()` in `app.py`; `loadPreferences()`, `syncPreferencesToCloud()` in `index.html`
 
 ---
 
-
----
----
-
-### 9. Microsoft Foundry
+### 11. Microsoft Foundry
 **Why it was chosen:** Foundry provides the managed deployment platform for Azure OpenAI models. Rather than calling a raw API endpoint, Foundry gives the team a dedicated deployment with controlled capacity, version management, rate limits, and monitoring — all in one place.
 
-**How the app uses it:** Deployed the `signal-classifier` endpoint through Foundry using `gpt-4o-mini`. This is the model called by `extract_signals_with_azure()` in Layer 2 of the pipeline. The deployment runs at 100,000 tokens/minute with a Standard deployment type. The endpoint URL and key are stored in Azure Key Vault and loaded at startup.
+**How the app uses it:** Joanne deployed the `signal-classifier` endpoint through Foundry using `gpt-4o-mini`. This is the model called by `extract_signals_with_azure()` in Layer 2 of the pipeline. The deployment runs at 100,000 tokens/minute with a Standard deployment type. The endpoint URL and key are stored in Azure Key Vault and loaded at startup.
 
 **Where in code:** `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_DEPLOYMENT` variables in `app.py` — both point to the Foundry-managed signal-classifier deployment.
