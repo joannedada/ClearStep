@@ -554,12 +554,12 @@ def _clean_list(lst):
     return [str(item).strip() for item in lst if str(item).strip()]
 
 # Per-item word limits — enforces what the prompt requests
+# tasks are excluded — prompt-guided to ≤8 words but not hard-truncated (truncation corrupts meaning)
 ITEM_WORD_LIMITS = {
     "signals": 3,
     "next_steps": 8,
     "warnings": 8,
     "key_items": 4,
-    "tasks": 8,
 }
 
 def _trim_items(items, field):
@@ -626,7 +626,7 @@ def validate_response(parsed, mode, reading_level="standard"):
         if not parsed.get("tasks"):
             errors.append("tasks list is empty")
         # Task list has no hard count cap — frontend batches in groups of 5
-        # Per-item word limit (tasks: 8) is enforced by _trim_items above
+        # Tasks are prompt-guided to ≤8 words — not hard-truncated. Model splits overlong actions into multiple tasks.
         if len(parsed.get("warnings", [])) > 6:
             parsed["warnings"] = parsed["warnings"][:6]
         if len(parsed.get("key_items", [])) > 4:
