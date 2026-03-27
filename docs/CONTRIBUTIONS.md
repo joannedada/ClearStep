@@ -18,7 +18,7 @@ This document reflects actual implementation based on the repository, system arc
 - Integrated Azure AI Speech — SSML-based TTS with 10-language Neural voice map, HTML stripping, rate limiting, audio never stored
 - Integrated Azure Blob Storage — timestamped audit log of every validated response, no message content stored
 - Integrated Azure Cosmos DB — anonymous session-based preference persistence (palette + reading level)
-- Integrated Azure Application Insights — 22+ custom telemetry events across the full request lifecycle
+- Integrated Azure Application Insights — 28 custom telemetry events across the full request lifecycle
 - Integrated Azure Key Vault — secret management via DefaultAzureCredential and Managed Identity at startup
 - Built the complete frontend (`index.html`) — both modes, 5-palette accessibility system, task engine state machine, batch delivery, TTS controls, file upload flow, calendar reminders, explainability panel, fallback handling, XSS sanitisation
 - Designed and enforced structured JSON output format with per-field rules across modes and reading levels
