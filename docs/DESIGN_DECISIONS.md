@@ -56,7 +56,7 @@ Tasks are capped at 8 words regardless of reading level. This is intentional and
 - Incomplete tasks (truncated mid-word) create anxiety and confusion
 - The correct solution when an action needs more words is to **split it into 2 tasks**, not stretch the limit
 
-The model is explicitly instructed to split overlong actions. `_trim_items()` in Python enforces the cap as a backstop. Both layers exist because one alone is not sufficient.
+The model is explicitly instructed to split overlong actions into two tasks rather than stretch the word limit. Tasks are not hard-truncated in Python — truncation corrupts meaning. The prompt guidance is the enforcement layer.
 
 ---
 
