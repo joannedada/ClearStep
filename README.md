@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/26293296/README.md)
 
 # ClearStep
 ### Microsoft AI Innovation Challenge Hackathon — March 2026
