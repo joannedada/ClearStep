@@ -115,15 +115,15 @@ if cat.get(<span class="val">"category"</span>) == <span class="val">"SelfHarm"<
 <span class="out">Output: Prompt Shields → High Risk hardcoded — model never invoked</span>`
 },
 {id:"accountability",icon:"📋",label:"Accountability",title:"ACCOUNTABILITY",accentVar:"--blue-text",iconBg:"var(--blue-bg)",iconBorder:"var(--blue-border)",glow:"rgba(136,200,240,0.07)",
-tags:["Blob audit log","22+ telemetry events","Foundry monitoring","No PII"],
+tags:["Blob audit log","28 telemetry events","Foundry monitoring","No PII"],
 what:[
 "Every analysis logged to Azure Blob Storage: risk_level, mode, is_medical, schema_valid. <strong>No message content ever stored.</strong>",
-"22+ named App Insights events fire across the request lifecycle — safety features proven firing in production, not just designed.",
+"28 named App Insights events fire across the request lifecycle — safety features proven firing in production, not just designed.",
 "Three enforcement events by name: <code>leaked_warnings_detected</code>, <code>medical_disclaimer_enforced</code>, <code>prompt_shield_flagged</code>.",
-"Microsoft Foundry provides deployment-level monitoring and metrics for the signal-classifier (gpt-4o-mini) in Layer 2."
+"Microsoft Foundry provides deployment-level monitoring and metrics for the signal-classifier (gpt-4o) in Layer 2."
 ],
 where:["Azure Blob Storage","Azure Application Insights","Microsoft Foundry","store_result_to_blob()"],
-evidenceLabel:"3 of 22+ named telemetry events — app.py",
+evidenceLabel:"3 of 28 named telemetry events — app.py",
 evidence:`<span class="comment"># Fires when model puts safety rule in the task list:</span>
 logger.warning(<span class="val">"ClearStep leaked_warnings_detected"</span>, extra={
     <span class="val">"custom_dimensions"</span>: {<span class="val">"leaked_count"</span>: str(len(leaked))}
