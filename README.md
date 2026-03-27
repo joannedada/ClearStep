@@ -337,7 +337,15 @@ These decisions were made to prioritise reliable real-time interaction, clear us
 |---|---|
 | **Leishka Pagan** | Project lead · Product strategy · System architecture · Backend development (`app.py`) · Frontend development (`index.html`) · Azure integrations · Prompt engineering · Medical safety design · UX design · Accessibility design · Security pen testing (14 attack vectors) · Responsible AI design · Full technical documentation (README, ARCHITECTURE, RESPONSIBLE_AI, AZURE_SERVICES, DESIGN_DECISIONS, SECURITY) |
 | **Joanne Obodoagwu** | Azure infrastructure · Resource provisioning · Key Vault · Blob Storage · App Service deployment · Cosmos DB setup · Microsoft Foundry deployment · Cloud integration |
-| **Fatima** | Research support · Accessibility input · Feature ideation |
+| **Fatima Ahmed** | Research support · Accessibility input · Feature ideation |
+
+---
+
+## Contacts
+
+| Leishka Pagan | Joanne Obodoagwu | Fatima Ahmed |
+|---|---|---|
+| [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/leishka-pagan/) | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/joanne-obodoagwu/) | [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/ahmedfatimah/) |
 
 ---
 
