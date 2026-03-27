@@ -86,7 +86,7 @@ Files are treated as untrusted from the moment they arrive.
 
 `screen_prompt_shield()` calls the `/contentsafety/text:shieldPrompt` endpoint on every user input. Detected jailbreak attempts return a hardcoded High Risk response, Claude never sees the message.
 
-Same resource as Content Safety — no extra config. Fires `prompt_shield_flagged` to App Insights when triggered.
+Built natively into the existing Content Safety resource, no extra configuration required. Fires `prompt_shield_flagged` to App Insights when triggered.
 
 ---
 
