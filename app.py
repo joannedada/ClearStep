@@ -769,6 +769,23 @@ def validate_response(parsed, mode, reading_level="standard"):
                 logger.warning("ClearStep medical_disclaimer_enforced")
                 parsed["warnings"].append(MEDICAL_DISCLAIMER)
 
+        # risk_level logic enforcement — if real warnings exist, Safe is not valid.
+        # The medical disclaimer alone does not count as a real warning.
+        # Runs last so it sees the final warnings list after all enforcement above.
+        real_warnings = [
+            w for w in parsed.get("warnings", [])
+            if MEDICAL_DISCLAIMER.lower() not in w.lower()
+        ]
+        if parsed.get("risk_level") == "Safe" and real_warnings:
+            parsed["risk_level"] = "Caution"
+            logger.warning("ClearStep risk_level_upgraded", extra={
+                "custom_dimensions": {
+                    "from": "Safe",
+                    "to": "Caution",
+                    "reason": "real_warnings_present"
+                }
+            })
+
         parsed.pop("next_steps", None)
 
     if mode == "safe":
