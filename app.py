@@ -339,8 +339,6 @@ def build_prompt(msg, detected_flags=None, reading_level="standard", mode="safe"
         meaning_rule = "meaning: ONE sentence only. Max 15 words. Include the key context and reason why this matters."
     else:
         meaning_rule = "meaning: ONE sentence only. Max 12 words. Simple and calm. No technical words."
-    # steps_rule is now unified across all reading levels — see TASK STRUCTURE RULES in mode_instruction
-    steps_rule = ""
 
     if mode == "simple":
         mode_instruction = f"""
@@ -436,7 +434,7 @@ Return ONLY this JSON:
 FORMAT RULES:
 - key_items: 2-4 words each. Label only. Examples: "7-day course", "60-day deadline", "Two forms of ID". Never a sentence.
 - warnings: Max 8 words each. Short facts. No "Do not" prefix.
-- meaning: Max 12 words. One sentence.
+
 - {meaning_rule}
 """
     else:
@@ -447,7 +445,6 @@ Content type: A message, email, link, or text that may be a scam, threat, or man
 STRICT LENGTH RULES — this app is for cognitively overwhelmed users. Brevity is safety.
 - signals: EXACTLY 2-3 words each. Label the pattern only. Examples: "Urgent language", "Suspicious link", "Impersonation attempt". NEVER write a full sentence. NEVER exceed 3 words.
 - next_steps: Max 8 words each. One clear action. Examples: "Do not click the link", "Call your bank directly". NEVER write a full sentence with clauses.
-- meaning: Max 12 words. One sentence.
 
 Return ONLY this JSON:
 {{
@@ -608,7 +605,7 @@ def _clean_list(lst):
     return [str(item).strip() for item in lst if str(item).strip()]
 
 # Per-item word limits — enforces what the prompt requests
-# tasks are excluded — prompt-guided to ≤8 words but not hard-truncated (truncation corrupts meaning)
+ main
 ITEM_WORD_LIMITS = {
     "signals": 3,
     "next_steps": 8,
@@ -697,7 +694,7 @@ def validate_response(parsed, mode, reading_level="standard"):
         if not parsed.get("tasks"):
             errors.append("tasks list is empty")
         # Task list has no hard count cap — frontend batches in groups of 5
-        # Tasks are prompt-guided to ≤8 words — not hard-truncated. Model splits overlong actions into multiple tasks.
+
         if len(parsed.get("warnings", [])) > 6:
             parsed["warnings"] = parsed["warnings"][:6]
         if len(parsed.get("key_items", [])) > 4:
@@ -728,34 +725,7 @@ def validate_response(parsed, mode, reading_level="standard"):
                 if w.lower() not in existing:
                     parsed["warnings"].append(w)
 
-        # Frequency expansion — expand stacked frequencies into named task instances.
-        # Unmappable frequencies are moved to key_items and logged separately.
-        expanded_tasks = []
-        freq_expanded_count = 0
-        freq_unmappable = []
-        for task in parsed.get("tasks", []):
-            result, was_expanded, is_unmappable = expand_frequency_task(task)
-            if was_expanded:
-                expanded_tasks.extend(result)
-                freq_expanded_count += 1
-            elif is_unmappable:
-                freq_unmappable.append(task)
-            else:
-                expanded_tasks.append(task)
-        if freq_expanded_count:
-            parsed["tasks"] = expanded_tasks
-            logger.warning("ClearStep frequency_expanded", extra={
-                "custom_dimensions": {"expanded_count": str(freq_expanded_count)}
-            })
-        if freq_unmappable:
-            existing_key_items = [k.lower() for k in parsed.get("key_items", [])]
-            for t in freq_unmappable:
-                if t.lower() not in existing_key_items:
-                    parsed.setdefault("key_items", []).append(t)
-            parsed["tasks"] = [t for t in parsed.get("tasks", []) if t not in freq_unmappable]
-            logger.warning("ClearStep frequency_unmappable_kept", extra={
-                "custom_dimensions": {"count": str(len(freq_unmappable)), "examples": str(freq_unmappable[:2])}
-            })
+
 
         if parsed["is_medical"]:
             if not parsed.get("warnings"):
@@ -769,22 +739,12 @@ def validate_response(parsed, mode, reading_level="standard"):
                 logger.warning("ClearStep medical_disclaimer_enforced")
                 parsed["warnings"].append(MEDICAL_DISCLAIMER)
 
-        # risk_level logic enforcement — if real warnings exist, Safe is not valid.
-        # The medical disclaimer alone does not count as a real warning.
-        # Runs last so it sees the final warnings list after all enforcement above.
+
         real_warnings = [
             w for w in parsed.get("warnings", [])
             if MEDICAL_DISCLAIMER.lower() not in w.lower()
         ]
-        if parsed.get("risk_level") == "Safe" and real_warnings:
-            parsed["risk_level"] = "Caution"
-            logger.warning("ClearStep risk_level_upgraded", extra={
-                "custom_dimensions": {
-                    "from": "Safe",
-                    "to": "Caution",
-                    "reason": "real_warnings_present"
-                }
-            })
+
 
         parsed.pop("next_steps", None)
 
@@ -820,12 +780,12 @@ def analyze():
     if mode not in ["safe", "simple"]:
         mode = "safe"
     if not msg:
-        return jsonify({"error": "Missing message"}), 400
+        return jsonify({"error": "Please paste something to check."}), 400
     max_len = 5000 if mode == "simple" else 2000
     if len(msg) > max_len:
         return jsonify({"error": f"Message too long. Please limit to {max_len} characters."}), 400
     if not ANTHROPIC_API_KEY:
-        return jsonify({"error": "Missing ANTHROPIC_API_KEY"}), 500
+        return jsonify({"error": "This feature is currently unavailable. Please try again later."}), 500
 
     # ── App Insights — analysis_started ────────────────────
     logger.info("ClearStep analysis_started", extra={
@@ -894,21 +854,21 @@ def analyze():
     )
     if response.status_code != 200:
         logger.error("Anthropic API error", extra={"custom_dimensions": {"status": str(response.status_code), "detail": response.text[:200]}})
-        return jsonify({"error": "Analysis service temporarily unavailable. Please try again."}), 503
+        return jsonify({"error": "Something went wrong on our end. Please try again in a moment."}), 503
 
     result = response.json()
     raw_text = result["content"][0]["text"].strip().replace("```json", "").replace("```", "").strip()
     try:
         parsed = json.loads(raw_text)
     except Exception:
-        return jsonify({"error": "Model returned invalid JSON"}), 500
+        return jsonify({"error": "We had trouble processing that. Please try again or simplify your input."}), 500
 
     validated, errors = validate_response(parsed, mode, reading_level)
     if errors:
         logger.error("ClearStep schema_validation_failed", extra={
             "custom_dimensions": {"errors": str(errors), "mode": mode}
         })
-        return jsonify({"error": "Response validation failed", "details": errors}), 500
+        return jsonify({"error": "We had trouble processing that. Please try again or simplify your input."}), 500
 
     store_result_to_blob(validated)
 
@@ -1176,9 +1136,7 @@ def extract_text_from_image(file_obj):
             if status == "failed":
                 raise RuntimeError("OCR analysis failed")
 
-        if result.get("status") != "succeeded":
-            raise RuntimeError("OCR did not complete successfully in time")
-
+main
         lines = []
         for read_result in result.get("analyzeResult", {}).get("readResults", []):
             for line in read_result.get("lines", []):
