@@ -187,7 +187,7 @@ These aren't themes — they're cognitive accessibility profiles. Each one is de
 
 **[→ View interactive palette showcase](https://htmlpreview.github.io/?https://github.com/joannedada/clearstep/blob/main/docs/clearstep_palettes.html)** — see each profile rendered with real colours, hex values, and design rationale.
 
-Five colour palettes each override the full CSS semantic variable set — not just background and text, but every state colour including safe, caution, danger, warning, medical bar, and completion states.
+Five colour palettes each override the full CSS semantic variable set, not just background and text, but every state colour including safe, caution, danger, warning, medical bar, and completion states.
 
 | Profile | Who it's for | Key decision |
 |---|---|---|
