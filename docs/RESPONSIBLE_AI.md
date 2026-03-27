@@ -1,4 +1,4 @@
-[RESPONSIBLE_AI.md](https://github.com/user-attachments/files/26267806/RESPONSIBLE_AI.md)
+
 # Responsible AI - ClearStep
 
 This document maps ClearStep's implementation to the [Microsoft Responsible AI Standard v2](https://blogs.microsoft.com/wp-content/uploads/prod/sites/5/2022/06/Microsoft-Responsible-AI-Standard-v2-General-Requirements-3.pdf).
@@ -9,9 +9,9 @@ This document maps ClearStep's implementation to the [Microsoft Responsible AI S
 
 - All model outputs are schema-validated server-side before reaching the user; missing fields, wrong types, and empty task lists are caught and rejected
 - Every analysis is logged to Azure Blob Storage with risk level, mode, reading level, is_medical flag, and schema validation result — no raw message content stored
-- Application Insights fires 12+ custom telemetry events per request, including `leaked_warnings_detected`, `medical_disclaimer_enforced`, `upload_blocked_crisis`, `upload_blocked_harmful`, and `schema_validation_failed`, providing production evidence that safety features are firing
+- Application Insights fires 28 custom telemetry events per request, including `leaked_warnings_detected`, `medical_disclaimer_enforced`, `upload_blocked_crisis`, `upload_blocked_harmful`, and `schema_validation_failed`, providing production evidence that safety features are firing
 - File upload blocks are logged separately with category and severity, proving the upload safety layer is active independently of the analysis pipeline
-- Microsoft Foundry provides deployment-level monitoring and metrics for the signal-classifier (gpt-4o-mini) used in Layer 2
+- Microsoft Foundry provides deployment-level monitoring and metrics for the signal-classifier (gpt-4o) used in Layer 2
 
 ---
 
