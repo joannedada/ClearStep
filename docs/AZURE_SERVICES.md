@@ -120,6 +120,10 @@ Azure API calls in the upload screener are bound to the first 1000 characters fo
 | `upload_blocked` | File blocked by content screening | upload safety firing |
 | `upload_blocked_crisis` | SelfHarm ≥ 4 in uploaded file | upload crisis path working |
 | `upload_blocked_harmful` | Sexual/Violence/Hate ≥ 2 in file | upload harm screening firing |
+| `ocr_api_failed` | Azure Vision OCR API returned non-200 | OCR API failure monitoring |
+| `ocr_extraction_failed` | OCR ran but returned no usable text | OCR extraction failure tracking |
+| `pdf_extraction_failed` | PDF text extraction threw an exception | PDF pipeline failure monitoring |
+| `docx_extraction_failed` | DOCX text extraction threw an exception | DOCX pipeline failure monitoring |
 | `tts_generated` | Audio successfully synthesised | TTS feature usage |
 | `tts_failed` | Speech API returned non-200 | TTS API failure monitoring |
 | `tts_exception` | Speech request threw an exception | TTS exception tracking |
