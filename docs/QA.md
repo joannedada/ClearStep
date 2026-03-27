@@ -75,7 +75,7 @@ Three layers. Azure Prompt Shields detects jailbreak attempts at infrastructure 
 The system was tested across 14+ attack vectors including prompt injection, schema manipulation, file upload abuse, and safety bypass attempts. **Defences are enforced before, during, and after model execution — not through prompt rules alone.** Results are documented in `docs/SECURITY.md`.
 
 **How does this comply with the Microsoft RAI Standard v2?**
-Every principle is mapped with specific implementation evidence in `docs/RESPONSIBLE_AI.md`. The short version: Accountability through Blob Storage logging and 22+ App Insights events. Reliability through hardcoded crisis responses and Python enforcement. Fairness through five accessibility palettes and automatic multilingual support. Transparency through the "Why this result?" panel. Privacy through zero message storage. Human Oversight through professional deference and no auto-advance in the step engine.
+Every principle is mapped with specific implementation evidence in `docs/RESPONSIBLE_AI.md`. The short version: Accountability through Blob Storage logging and 28 App Insights events. Reliability through hardcoded crisis responses and Python enforcement. Fairness through five accessibility palettes and automatic multilingual support. Transparency through the "Why this result?" panel. Privacy through zero message storage. Human Oversight through professional deference and no auto-advance in the step engine.
 
 ---
 
@@ -85,7 +85,7 @@ Every principle is mapped with specific implementation evidence in `docs/RESPONS
 Each service was chosen for a specific job it does better than the alternatives. Content Safety runs before any LLM — because a hardened infrastructure safety layer is more reliable than a prompt instruction. Azure OpenAI runs signal extraction because a cheap, fast, zero-temperature classifier is the right tool for binary flag detection. Azure AI Language handles multilingual support automatically so users don't need to configure anything. None of the services overlap. Full rationale: `docs/AZURE_SERVICES.md`.
 
 **What is Microsoft Foundry's role?**
-Foundry hosts the signal-classifier (gpt-4o-mini) used in Layer 2 of the pipeline. It provides controlled capacity, version management, and deployment-level monitoring for the model that extracts the five boolean risk flags injected into Claude's prompt. The separation of classification (Foundry/Azure OpenAI) from reasoning (Anthropic Claude) is a deliberate architectural decision — not all tasks need the same model.
+Foundry hosts the signal-classifier (gpt-4o) used in Layer 2 of the pipeline. It provides controlled capacity, version management, and deployment-level monitoring for the model that extracts the five boolean risk flags injected into Claude's prompt. The separation of classification (Foundry/Azure OpenAI) from reasoning (Anthropic Claude) is a deliberate architectural decision — not all tasks need the same model.
 
 **Why Anthropic Claude for the main reasoning layer?**
 Claude provides better nuanced reasoning for medical and safety content than alternatives at this task. Temperature is set to 0 for determinism. The model is not the only safety layer — it is the reasoning layer. Safety is enforced before and after.
