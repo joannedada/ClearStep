@@ -1,4 +1,3 @@
-[CONTRIBUTIONS.md](https://github.com/user-attachments/files/26270336/CONTRIBUTIONS.md)
 # Contributions — ClearStep
 This document reflects actual implementation based on the repository, system architecture, and deployed functionality.
 
@@ -11,7 +10,7 @@ This document reflects actual implementation based on the repository, system arc
 - Designed and implemented the full backend architecture (`app.py`) — Flask application, routing, request validation, error handling, and graceful degradation across all Azure services
 - Built the complete 3-layer AI pipeline: Azure Content Safety → Prompt Shields → Azure AI Language → Azure OpenAI signal extraction → Anthropic Claude reasoning → Python validation
 - Integrated Azure AI Content Safety — crisis screening (SelfHarm ≥ 4 → hardcoded 988 response) and Prompt Shields jailbreak detection, both running before any LLM is invoked
-- Integrated Azure OpenAI via Microsoft Foundry — signal-classifier (gpt-4o-mini) extracting 5 boolean flags injected as Claude context
+- Integrated Azure OpenAI via Microsoft Foundry — signal-classifier (gpt-4o) extracting 5 boolean flags injected as Claude context
 - Integrated Anthropic Claude — mode-specific prompt engineering, reading level adaptation, medical hardening rules, XML message delimiting for prompt injection mitigation
 - Designed and implemented `validate_response()` — the Python enforcement layer for schema validation, medical safeguards, frequency expansion, leaked warning detection, is_medical keyword backstop, and risk_level logic enforcement
 - Integrated Azure AI Language — automatic language detection, multilingual prompt injection, response in detected language across all fields
