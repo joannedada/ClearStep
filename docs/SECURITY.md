@@ -211,8 +211,12 @@ Test results: `<script>alert(1)</script>`, `<img src=x onerror=alert(1)>`, `"><s
 
 | Package | Purpose | Security role |
 |---|---|---|
+| `Flask` | Web framework | Production WSGI app, no debug mode |
 | `flask-limiter` | Rate limiting | Prevents API abuse and token burning |
 | `flask-cors` | CORS policy | Restricts API to own domain |
+| `requests` | HTTP client | Azure REST API calls |
+| `gunicorn` | WSGI server | Production server, debug mode off |
+| `Werkzeug` | Utilities | Filename sanitisation via secure_filename() |
 | `azure-identity` | Managed Identity auth | No secrets in code |
 | `azure-keyvault-secrets` | Secret retrieval | Centralised, auditable |
 | `azure-storage-blob` | Audit logging | Immutable result log |
